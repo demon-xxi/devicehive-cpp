@@ -1,0 +1,26 @@
+var classhive_1_1http_1_1_connection =
+[
+    [ "Secure", "classhive_1_1http_1_1_connection_1_1_secure.html", "classhive_1_1http_1_1_connection_1_1_secure" ],
+    [ "Simple", "classhive_1_1http_1_1_connection_1_1_simple.html", "classhive_1_1http_1_1_connection_1_1_simple" ],
+    [ "IOService", "classhive_1_1http_1_1_connection.html#aa07802d497470a9d11c83565c5cca29f", null ],
+    [ "ErrorCode", "classhive_1_1http_1_1_connection.html#aa6a74d3b842a6ca2b0503b05b8479005", null ],
+    [ "Resolver", "classhive_1_1http_1_1_connection.html#a429e3025b4abe6ab8d51beeea590949f", null ],
+    [ "StreamBuf", "classhive_1_1http_1_1_connection.html#a98e84399da04346c9892b6deba18b571", null ],
+    [ "MutableBuffers", "classhive_1_1http_1_1_connection.html#a351376944807db625f7f0606e4b52e85", null ],
+    [ "ConstBuffers", "classhive_1_1http_1_1_connection.html#a1bc39891897466ab7f8a7e759cff0780", null ],
+    [ "SharedPtr", "classhive_1_1http_1_1_connection.html#afa9cdbfcc39b975b061daf9846ef54df", null ],
+    [ "ConnectCallback", "classhive_1_1http_1_1_connection.html#a487badfcf5a194f71e4159cf66bad629", null ],
+    [ "HandshakeCallback", "classhive_1_1http_1_1_connection.html#a3212037fad4bf75b399d994e1e65d335", null ],
+    [ "WriteCallback", "classhive_1_1http_1_1_connection.html#aab4955d412458eaabb9f33ad96f1bbb8", null ],
+    [ "ReadCallback", "classhive_1_1http_1_1_connection.html#ab888d08b1942ae0af7fcd723291b9268", null ],
+    [ "Connection", "classhive_1_1http_1_1_connection.html#a346f4774f29e17e14e9b39fa9e2165e3", null ],
+    [ "~Connection", "classhive_1_1http_1_1_connection.html#ad4634bc5fdf0ed7953d90fb6b22ed099", null ],
+    [ "getBuffer", "classhive_1_1http_1_1_connection.html#a451c030b838d5f317faaf4e4ea79b04f", null ],
+    [ "get_io_service", "classhive_1_1http_1_1_connection.html#a56bf1e9ccf1e5bc4ef78d02b2d55dfcb", null ],
+    [ "close", "classhive_1_1http_1_1_connection.html#af6ee7eacbde6b379b68d954e44f6e549", null ],
+    [ "async_connect", "classhive_1_1http_1_1_connection.html#aacbf9410c5be36f08efde7c5e94037e7", null ],
+    [ "async_handshake", "classhive_1_1http_1_1_connection.html#ab2cb4176e3decaba9c7cd97e4c212aad", null ],
+    [ "async_write_some", "classhive_1_1http_1_1_connection.html#a9ac9191f7998a259421deb7070c3352d", null ],
+    [ "async_read_some", "classhive_1_1http_1_1_connection.html#ad42c408eddd43da23686e97fcaf1bf1b", null ],
+    [ "m_buffer", "classhive_1_1http_1_1_connection.html#a4bc43eeba8022ca5d73beb494e5493d8", null ]
+];

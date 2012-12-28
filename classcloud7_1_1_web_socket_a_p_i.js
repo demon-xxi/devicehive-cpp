@@ -1,0 +1,26 @@
+var classcloud7_1_1_web_socket_a_p_i =
+[
+    [ "This", "classcloud7_1_1_web_socket_a_p_i.html#ae082537cbc0a2620f329c82d426c01cb", null ],
+    [ "SharedPtr", "classcloud7_1_1_web_socket_a_p_i.html#acaa3112c588acba4a654cd4a80a4f7f0", null ],
+    [ "ConnectCallback", "classcloud7_1_1_web_socket_a_p_i.html#ac2acf8921b0a4f7370f9f3aa20b4cec2", null ],
+    [ "ActionSentCallback", "classcloud7_1_1_web_socket_a_p_i.html#aeda119b81c2dc916ca22e6cc28d08ab1", null ],
+    [ "ActionReceivedCallback", "classcloud7_1_1_web_socket_a_p_i.html#a871defef9b1a498581ad19064d2389fe", null ],
+    [ "WebSocketAPI", "classcloud7_1_1_web_socket_a_p_i.html#a457821bbef3a6707cf913b4a9553cad1", null ],
+    [ "~WebSocketAPI", "classcloud7_1_1_web_socket_a_p_i.html#a30be925ef4e05c22b9e13613d59da75d", null ],
+    [ "create", "classcloud7_1_1_web_socket_a_p_i.html#a662b1177c0b04c2177a89abfb03d72a0", null ],
+    [ "isOpen", "classcloud7_1_1_web_socket_a_p_i.html#a3c7351cec1380d07f9e4b3ec96b2b1ff", null ],
+    [ "asyncConnect", "classcloud7_1_1_web_socket_a_p_i.html#a1fa599008bb257c9f366f3ccce904c72", null ],
+    [ "close", "classcloud7_1_1_web_socket_a_p_i.html#ae64cf67b84e6115404784cf37f0c4b23", null ],
+    [ "onConnect", "classcloud7_1_1_web_socket_a_p_i.html#ae8ba4ac9329b061f20e4abbadc34deb4", null ],
+    [ "asyncSendAction", "classcloud7_1_1_web_socket_a_p_i.html#a4efe41bda72091d28c0ad576c39bb812", null ],
+    [ "onMessageSent", "classcloud7_1_1_web_socket_a_p_i.html#a572fd2ff8a54093895ef07b040a2053e", null ],
+    [ "listenForActions", "classcloud7_1_1_web_socket_a_p_i.html#aa4089be51ed2f7716b3cf69c0730e1ae", null ],
+    [ "onMessageReceived", "classcloud7_1_1_web_socket_a_p_i.html#af2264065ee19ce16ed1e31c7c7da1c5e", null ],
+    [ "m_actionReceivedCallback", "classcloud7_1_1_web_socket_a_p_i.html#af0743c0d6c32d3cad80aa28fab9ed877", null ],
+    [ "m_ios", "classcloud7_1_1_web_socket_a_p_i.html#a3e5295b970d9a17b0139dae7a44d9305", null ],
+    [ "m_http", "classcloud7_1_1_web_socket_a_p_i.html#a59d27cb06abde6383321e8f172e5fe7e", null ],
+    [ "m_ws", "classcloud7_1_1_web_socket_a_p_i.html#afaaee4dafc1a35cac340bc0f5a633f98", null ],
+    [ "m_baseUrl", "classcloud7_1_1_web_socket_a_p_i.html#a0dc749552609092ef75f843b1720f970", null ],
+    [ "m_timeout_ms", "classcloud7_1_1_web_socket_a_p_i.html#adae767175df3fe6d419765d973eeb3d5", null ],
+    [ "m_log", "classcloud7_1_1_web_socket_a_p_i.html#a050dc6e76e4021d7d115d464bf6922b3", null ]
+];

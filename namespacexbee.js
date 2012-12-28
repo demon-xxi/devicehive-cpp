@@ -1,0 +1,6 @@
+var namespacexbee =
+[
+    [ "Frame", "classxbee_1_1_frame.html", "classxbee_1_1_frame" ],
+    [ "Debug", "classxbee_1_1_debug.html", "classxbee_1_1_debug" ],
+    [ "API", "classxbee_1_1_a_p_i.html", "classxbee_1_1_a_p_i" ]
+];
