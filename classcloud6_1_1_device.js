@@ -10,6 +10,7 @@ var classcloud6_1_1_device =
     [ "name", "classcloud6_1_1_device.html#a9a2326f35466e54c36c070829245c557", null ],
     [ "key", "classcloud6_1_1_device.html#a9295944786eaac08ccf5d53ca07fe18b", null ],
     [ "status", "classcloud6_1_1_device.html#a4e531c185af848083db0808335a78168", null ],
+    [ "data", "classcloud6_1_1_device.html#af0bdeeef572012523868c17bb25964f5", null ],
     [ "network", "classcloud6_1_1_device.html#ae50ef62ddaf1b2ec236307e30640ff11", null ],
     [ "deviceClass", "classcloud6_1_1_device.html#a6f5e643f905add222bba505673d659fc", null ],
     [ "equipment", "classcloud6_1_1_device.html#ac2972de68e909cc87199419309ce26b7", null ]

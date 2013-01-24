@@ -28,7 +28,7 @@
  <tr style="height: 56px;">
   <td style="padding-left: 0.5em;">
    <div id="projectname">DeviceHive C++ Framework
-   &#160;<span id="projectnumber">1.0</span>
+   &#160;<span id="projectnumber">1.1</span>
    </div>
    <div id="projectbrief">DeviceHive framework library for C++</div>
   </td>
@@ -169,8 +169,8 @@ Private Attributes</h2></td></tr>
 <a name="details" id="details"></a><h2 class="groupheader">Detailed Description</h2>
 <div class="textblock"><p>The logger. </p>
 <p>This is the main class of the logging tools.</p>
-<p>All loggers organized into tree hierarchy. The root logger available through <a class="el" href="classhive_1_1log_1_1_logger.html#aa288e1d280a97ee13840fa5b9d08f775" title="Get the root logger.">root()</a> static method. By default <a class="el" href="classhive_1_1log_1_1_logger.html#aa288e1d280a97ee13840fa5b9d08f775" title="Get the root logger.">root()</a> logger send messages to the standard error stream at the <b>WARN</b> level. </p>
-<dl><dt><b>Examples: </b></dt><dd><a class="el" href="examples_2basic_app_8hpp-example.html#_a5">examples/basic_app.hpp</a>, <a class="el" href="examples_2simple_dev_8hpp-example.html#_a36">examples/simple_dev.hpp</a>, <a class="el" href="examples_2simple_gw_8hpp-example.html#_a47">examples/simple_gw.hpp</a>, and <a class="el" href="examples_2zigbee_gw_8hpp-example.html#_a60">examples/zigbee_gw.hpp</a>.</dd>
+<p>All loggers organized into tree hierarchy. The root logger available through <a class="el" href="classhive_1_1log_1_1_logger.html#aa288e1d280a97ee13840fa5b9d08f775" title="Get the root logger.">root()</a> static method. By default <a class="el" href="classhive_1_1log_1_1_logger.html#aa288e1d280a97ee13840fa5b9d08f775" title="Get the root logger.">root()</a> logger send messages to the standard error stream at the <b>WARN</b> level minimum. </p>
+<dl><dt><b>Examples: </b></dt><dd><a class="el" href="examples_2basic_app_8hpp-example.html#_a5">examples/basic_app.hpp</a>, <a class="el" href="examples_2simple_dev_8hpp-example.html#_a37">examples/simple_dev.hpp</a>, <a class="el" href="examples_2simple_gw_8hpp-example.html#_a48">examples/simple_gw.hpp</a>, and <a class="el" href="examples_2zigbee_gw_8hpp-example.html#_a61">examples/zigbee_gw.hpp</a>.</dd>
 </dl></div><h2 class="groupheader">Constructor &amp; Destructor Documentation</h2>
 <a class="anchor" id="a34b71e2259e0c1949ab7d99344561753"></a>
 <div class="memitem">
@@ -226,8 +226,7 @@ Private Attributes</h2></td></tr>
 </div><div class="memdoc">
 
 <p>The default constructor. </p>
-<p>Is used for "root" logger.</p>
-<p>The log level is <b>WARN</b> and the target is <code>std::cerr</code> stream by default. </p>
+<p>Is used for root logger. </p>
 
 </div>
 </div>
@@ -288,7 +287,7 @@ Private Attributes</h2></td></tr>
   </dd>
 </dl>
 <dl class="section return"><dt>Returns</dt><dd>The self reference. </dd></dl>
-<dl><dt><b>Examples: </b></dt><dd><a class="el" href="examples_2basic_app_8hpp-example.html#a8">examples/basic_app.hpp</a>, <a class="el" href="examples_2simple_dev_8hpp-example.html#a34">examples/simple_dev.hpp</a>, <a class="el" href="examples_2simple_gw_8hpp-example.html#a45">examples/simple_gw.hpp</a>, and <a class="el" href="examples_2zigbee_gw_8hpp-example.html#a58">examples/zigbee_gw.hpp</a>.</dd>
+<dl><dt><b>Examples: </b></dt><dd><a class="el" href="examples_2basic_app_8hpp-example.html#a8">examples/basic_app.hpp</a>, <a class="el" href="examples_2simple_dev_8hpp-example.html#a35">examples/simple_dev.hpp</a>, <a class="el" href="examples_2simple_gw_8hpp-example.html#a46">examples/simple_gw.hpp</a>, and <a class="el" href="examples_2zigbee_gw_8hpp-example.html#a59">examples/zigbee_gw.hpp</a>.</dd>
 </dl>
 </div>
 </div>
@@ -374,7 +373,7 @@ Private Attributes</h2></td></tr>
 
 <p>Get the target. </p>
 <dl class="section return"><dt>Returns</dt><dd>The target. May be NULL. </dd></dl>
-<dl><dt><b>Examples: </b></dt><dd><a class="el" href="examples_2simple_dev_8hpp-example.html#a32">examples/simple_dev.hpp</a>, <a class="el" href="examples_2simple_gw_8hpp-example.html#a43">examples/simple_gw.hpp</a>, and <a class="el" href="examples_2zigbee_gw_8hpp-example.html#a56">examples/zigbee_gw.hpp</a>.</dd>
+<dl><dt><b>Examples: </b></dt><dd><a class="el" href="examples_2simple_dev_8hpp-example.html#a33">examples/simple_dev.hpp</a>, <a class="el" href="examples_2simple_gw_8hpp-example.html#a44">examples/simple_gw.hpp</a>, and <a class="el" href="examples_2zigbee_gw_8hpp-example.html#a57">examples/zigbee_gw.hpp</a>.</dd>
 </dl>
 </div>
 </div>
@@ -408,7 +407,7 @@ Private Attributes</h2></td></tr>
   </dd>
 </dl>
 <dl class="section return"><dt>Returns</dt><dd>The self reference. </dd></dl>
-<dl><dt><b>Examples: </b></dt><dd><a class="el" href="examples_2simple_dev_8hpp-example.html#a33">examples/simple_dev.hpp</a>, <a class="el" href="examples_2simple_gw_8hpp-example.html#a44">examples/simple_gw.hpp</a>, and <a class="el" href="examples_2zigbee_gw_8hpp-example.html#a57">examples/zigbee_gw.hpp</a>.</dd>
+<dl><dt><b>Examples: </b></dt><dd><a class="el" href="examples_2simple_dev_8hpp-example.html#a34">examples/simple_dev.hpp</a>, <a class="el" href="examples_2simple_gw_8hpp-example.html#a45">examples/simple_gw.hpp</a>, and <a class="el" href="examples_2zigbee_gw_8hpp-example.html#a58">examples/zigbee_gw.hpp</a>.</dd>
 </dl>
 </div>
 </div>
@@ -435,7 +434,7 @@ Private Attributes</h2></td></tr>
 
 <p>Get the root logger. </p>
 <dl class="section return"><dt>Returns</dt><dd>The root logger reference. </dd></dl>
-<dl><dt><b>Examples: </b></dt><dd><a class="el" href="examples_2basic_app_8hpp-example.html#a7">examples/basic_app.hpp</a>, <a class="el" href="examples_2simple_dev_8hpp-example.html#a31">examples/simple_dev.hpp</a>, <a class="el" href="examples_2simple_gw_8hpp-example.html#a42">examples/simple_gw.hpp</a>, and <a class="el" href="examples_2zigbee_gw_8hpp-example.html#a55">examples/zigbee_gw.hpp</a>.</dd>
+<dl><dt><b>Examples: </b></dt><dd><a class="el" href="examples_2basic_app_8hpp-example.html#a7">examples/basic_app.hpp</a>, <a class="el" href="examples_2simple_dev_8hpp-example.html#a32">examples/simple_dev.hpp</a>, <a class="el" href="examples_2simple_gw_8hpp-example.html#a43">examples/simple_gw.hpp</a>, and <a class="el" href="examples_2zigbee_gw_8hpp-example.html#a56">examples/zigbee_gw.hpp</a>.</dd>
 </dl>
 </div>
 </div>
@@ -587,6 +586,7 @@ Private Attributes</h2></td></tr>
 </div><div class="memdoc">
 
 <p>Get root implementation. </p>
+<p>The log level is <b>WARN</b> and the target is <code>std::cerr</code> stream by default.</p>
 <dl class="section return"><dt>Returns</dt><dd>The root logger implementation. </dd></dl>
 
 </div>
@@ -623,7 +623,7 @@ Private Attributes</h2></td></tr>
 <div id="nav-path" class="navpath"><!-- id is needed for treeview function! -->
   <ul>
     <li class="navelem"><a class="el" href="namespacehive.html">hive</a></li><li class="navelem"><a class="el" href="namespacehive_1_1log.html">log</a></li><li class="navelem"><a class="el" href="classhive_1_1log_1_1_logger.html">Logger</a></li>
-    <li class="footer">Generated on Fri Dec 28 2012 16:00:18 for DeviceHive C++ Framework by
+    <li class="footer">Generated on Thu Jan 24 2013 12:25:52 for DeviceHive C++ Framework by
     <a href="http://www.doxygen.org/index.html">
     <img class="footer" src="doxygen.png" alt="doxygen"/></a> 1.8.2 </li>
   </ul>

@@ -28,7 +28,7 @@
  <tr style="height: 56px;">
   <td style="padding-left: 0.5em;">
    <div id="projectname">DeviceHive C++ Framework
-   &#160;<span id="projectnumber">1.0</span>
+   &#160;<span id="projectnumber">1.1</span>
    </div>
    <div id="projectbrief">DeviceHive framework library for C++</div>
   </td>
@@ -179,7 +179,7 @@ Protected Attributes</h2></td></tr>
 <p>This is the base class for all log targets - endpoint for all log messages. Base class does nothing and works like a <b>NULL</b> target.</p>
 <p>See the inner classes for standard targets: <a class="el" href="classhive_1_1log_1_1_target_1_1_stream.html" title="The &quot;Stream&quot; target.">Stream</a>, <a class="el" href="classhive_1_1log_1_1_target_1_1_file.html" title="The &quot;File&quot; target.">File</a> and <a class="el" href="classhive_1_1log_1_1_target_1_1_tie.html" title="The &quot;Tie&quot; target.">Tie</a>.</p>
 <p>The target uses specified log message format (see <a class="el" href="classhive_1_1log_1_1_target.html#ae61096d6161686278d43cfd2c07cc401" title="Set message format.">setFormat()</a> method) or <a class="el" href="classhive_1_1log_1_1_format.html#aa90dbcf323d55caa9937567a9d9dc442" title="Format the log message (default format).">hive::log::Format::defaultFormat()</a> if no any format provided.</p>
-<p>There is a simple filter feature - you can provide the minimum logging level. All log messages with the logging level below this limit will be ignored. This simple message filter is disabled by default. </p>
+<p>There is a simple filter feature - you can provide the minimum logging level. All log messages with the logging level below this limit will be ignored. This simple message filter is disabled by default, i.e. the minimum logging level is <a class="el" href="namespacehive_1_1log.html#a221b779e6bb7b8d40677d7642bfefac5ac61f9872fd84232dfb9e76596e6f0009" title="Full logging.">hive::log::LEVEL_ALL</a>. </p>
 </div><h2 class="groupheader">Member Typedef Documentation</h2>
 <a class="anchor" id="aee8b75c99333d93584ad6da3ecb2e3fe"></a>
 <div class="memitem">
@@ -269,8 +269,8 @@ Protected Attributes</h2></td></tr>
 </div><div class="memdoc">
 
 <p>The factory method. </p>
-<dl class="section return"><dt>Returns</dt><dd>The new "NULL" target instance. </dd></dl>
-<dl><dt><b>Examples: </b></dt><dd><a class="el" href="examples_2simple_dev_8hpp-example.html#a30">examples/simple_dev.hpp</a>, <a class="el" href="examples_2simple_gw_8hpp-example.html#a41">examples/simple_gw.hpp</a>, and <a class="el" href="examples_2zigbee_gw_8hpp-example.html#a54">examples/zigbee_gw.hpp</a>.</dd>
+<dl class="section return"><dt>Returns</dt><dd>The new <b>NULL</b> target instance. </dd></dl>
+<dl><dt><b>Examples: </b></dt><dd><a class="el" href="examples_2simple_dev_8hpp-example.html#a31">examples/simple_dev.hpp</a>, <a class="el" href="examples_2simple_gw_8hpp-example.html#a42">examples/simple_gw.hpp</a>, and <a class="el" href="examples_2zigbee_gw_8hpp-example.html#a55">examples/zigbee_gw.hpp</a>.</dd>
 </dl>
 </div>
 </div>
@@ -479,7 +479,7 @@ Protected Attributes</h2></td></tr>
 <div id="nav-path" class="navpath"><!-- id is needed for treeview function! -->
   <ul>
     <li class="navelem"><a class="el" href="namespacehive.html">hive</a></li><li class="navelem"><a class="el" href="namespacehive_1_1log.html">log</a></li><li class="navelem"><a class="el" href="classhive_1_1log_1_1_target.html">Target</a></li>
-    <li class="footer">Generated on Fri Dec 28 2012 16:00:18 for DeviceHive C++ Framework by
+    <li class="footer">Generated on Thu Jan 24 2013 12:25:52 for DeviceHive C++ Framework by
     <a href="http://www.doxygen.org/index.html">
     <img class="footer" src="doxygen.png" alt="doxygen"/></a> 1.8.2 </li>
   </ul>

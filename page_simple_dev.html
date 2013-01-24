@@ -28,7 +28,7 @@
  <tr style="height: 56px;">
   <td style="padding-left: 0.5em;">
    <div id="projectname">DeviceHive C++ Framework
-   &#160;<span id="projectnumber">1.0</span>
+   &#160;<span id="projectnumber">1.1</span>
    </div>
    <div id="projectbrief">DeviceHive framework library for C++</div>
   </td>
@@ -185,7 +185,7 @@ DeviceHive framework</div></div>
 </div><!-- fragment --><p>It means that current temperature is 24.187C.</p>
 <p>Our application periodically checks all the connected temperature sensors and sends notifications to the DeviceHive server if the temperature measurement has been changed (more than 0.2 degree) since last time.</p>
 <h2>Control flow</h2>
-<p>At the start we should register our device on the server using <a class="el" href="classcloud6_1_1_server_module_r_e_s_t.html#a514c33c7597ea6f22e35f2210ad67c86" title="Register the device asynchronously.">simple_dev::Application::asyncRegisterDevice()</a> method. If registration is successful we start listening for the commands from the server using <a class="el" href="classcloud6_1_1_server_module_r_e_s_t.html#aaf6a5b2d91e8cf9e2e5cdc248d9535a1" title="Poll commands asynchronously.">simple_dev::Application::asyncPollCommands()</a> method. At the same time we start <em>update</em> timer and periodically check the temperature sensors using <a class="el" href="classsimple__dev_1_1_application.html#aa94c63b7d00291666a53fe916de90360" title="Start update timer.">simple_dev::Application::asyncUpdateSensors()</a> method. If temperature measurement has been changed, then we send notification to the DeviceHive server.</p>
+<p>At the start we should register our device on the server using <a class="el" href="classcloud6_1_1_server_module_r_e_s_t.html#a514c33c7597ea6f22e35f2210ad67c86" title="Register the device asynchronously.">simple_dev::Application::asyncRegisterDevice()</a> method. If registration is successful we start listening for the commands from the server using <a class="el" href="classcloud6_1_1_server_module_r_e_s_t.html#a9321e5b5f813134788eddc8f9bf7d728" title="Poll commands asynchronously.">simple_dev::Application::asyncPollCommands()</a> method. At the same time we start <em>update</em> timer and periodically check the temperature sensors using <a class="el" href="classsimple__dev_1_1_application.html#aa94c63b7d00291666a53fe916de90360" title="Start update timer.">simple_dev::Application::asyncUpdateSensors()</a> method. If temperature measurement has been changed, then we send notification to the DeviceHive server.</p>
 <h2>Command line arguments</h2>
 <p>Application supports the following command line arguments:</p>
 <table class="doxtable">
@@ -238,7 +238,7 @@ DeviceHive framework</div></div>
 <!-- start footer part -->
 <div id="nav-path" class="navpath"><!-- id is needed for treeview function! -->
   <ul>
-    <li class="footer">Generated on Fri Dec 28 2012 16:00:17 for DeviceHive C++ Framework by
+    <li class="footer">Generated on Thu Jan 24 2013 12:25:51 for DeviceHive C++ Framework by
     <a href="http://www.doxygen.org/index.html">
     <img class="footer" src="doxygen.png" alt="doxygen"/></a> 1.8.2 </li>
   </ul>

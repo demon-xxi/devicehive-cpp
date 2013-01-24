@@ -28,7 +28,7 @@
  <tr style="height: 56px;">
   <td style="padding-left: 0.5em;">
    <div id="projectname">DeviceHive C++ Framework
-   &#160;<span id="projectnumber">1.0</span>
+   &#160;<span id="projectnumber">1.1</span>
    </div>
    <div id="projectbrief">DeviceHive framework library for C++</div>
   </td>
@@ -126,15 +126,27 @@ Protected Member Functions</h2></td></tr>
 <tr class="memitem:a636bae251400b4f2bf6b8f0286b577a6"><td class="memItemLeft" align="right" valign="top">void&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="classcloud6_1_1_server_module_r_e_s_t.html#a636bae251400b4f2bf6b8f0286b577a6">cancelServerModuleREST</a> ()</td></tr>
 <tr class="memdesc:a636bae251400b4f2bf6b8f0286b577a6"><td class="mdescLeft">&#160;</td><td class="mdescRight">Cancel all server tasks.  <a href="#a636bae251400b4f2bf6b8f0286b577a6"></a><br/></td></tr>
 <tr class="separator:a636bae251400b4f2bf6b8f0286b577a6"><td class="memSeparator" colspan="2">&#160;</td></tr>
+<tr class="memitem:a32547f322bade6cc1e02013b983c0e69"><td class="memItemLeft" align="right" valign="top">virtual void&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="classcloud6_1_1_server_module_r_e_s_t.html#a32547f322bade6cc1e02013b983c0e69">asyncGetServerInfo</a> ()</td></tr>
+<tr class="memdesc:a32547f322bade6cc1e02013b983c0e69"><td class="mdescLeft">&#160;</td><td class="mdescRight">Get the server info asynchronously.  <a href="#a32547f322bade6cc1e02013b983c0e69"></a><br/></td></tr>
+<tr class="separator:a32547f322bade6cc1e02013b983c0e69"><td class="memSeparator" colspan="2">&#160;</td></tr>
+<tr class="memitem:a59a26786f87900c5f881d18650c411d5"><td class="memItemLeft" align="right" valign="top">virtual void&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="classcloud6_1_1_server_module_r_e_s_t.html#a59a26786f87900c5f881d18650c411d5">onGotServerInfo</a> (boost::system::error_code err, <a class="el" href="classhive_1_1json_1_1_value.html">json::Value</a> const &amp;info)</td></tr>
+<tr class="memdesc:a59a26786f87900c5f881d18650c411d5"><td class="mdescLeft">&#160;</td><td class="mdescRight">The "server info" callback.  <a href="#a59a26786f87900c5f881d18650c411d5"></a><br/></td></tr>
+<tr class="separator:a59a26786f87900c5f881d18650c411d5"><td class="memSeparator" colspan="2">&#160;</td></tr>
 <tr class="memitem:a514c33c7597ea6f22e35f2210ad67c86"><td class="memItemLeft" align="right" valign="top">virtual void&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="classcloud6_1_1_server_module_r_e_s_t.html#a514c33c7597ea6f22e35f2210ad67c86">asyncRegisterDevice</a> (<a class="el" href="namespacecloud6.html#a5cfc435a6fbc96b4c71912911798e0d4">cloud6::DevicePtr</a> device)</td></tr>
 <tr class="memdesc:a514c33c7597ea6f22e35f2210ad67c86"><td class="mdescLeft">&#160;</td><td class="mdescRight">Register the device asynchronously.  <a href="#a514c33c7597ea6f22e35f2210ad67c86"></a><br/></td></tr>
 <tr class="separator:a514c33c7597ea6f22e35f2210ad67c86"><td class="memSeparator" colspan="2">&#160;</td></tr>
 <tr class="memitem:ac20a1ff7553fe571504aa0cd9f78feff"><td class="memItemLeft" align="right" valign="top">virtual void&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="classcloud6_1_1_server_module_r_e_s_t.html#ac20a1ff7553fe571504aa0cd9f78feff">onRegisterDevice</a> (boost::system::error_code err, <a class="el" href="namespacecloud6.html#a5cfc435a6fbc96b4c71912911798e0d4">cloud6::DevicePtr</a> device)</td></tr>
 <tr class="memdesc:ac20a1ff7553fe571504aa0cd9f78feff"><td class="mdescLeft">&#160;</td><td class="mdescRight">The "register device" callback.  <a href="#ac20a1ff7553fe571504aa0cd9f78feff"></a><br/></td></tr>
 <tr class="separator:ac20a1ff7553fe571504aa0cd9f78feff"><td class="memSeparator" colspan="2">&#160;</td></tr>
-<tr class="memitem:aaf6a5b2d91e8cf9e2e5cdc248d9535a1"><td class="memItemLeft" align="right" valign="top">virtual void&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="classcloud6_1_1_server_module_r_e_s_t.html#aaf6a5b2d91e8cf9e2e5cdc248d9535a1">asyncPollCommands</a> (<a class="el" href="namespacecloud6.html#a5cfc435a6fbc96b4c71912911798e0d4">cloud6::DevicePtr</a> device)</td></tr>
-<tr class="memdesc:aaf6a5b2d91e8cf9e2e5cdc248d9535a1"><td class="mdescLeft">&#160;</td><td class="mdescRight">Poll commands asynchronously.  <a href="#aaf6a5b2d91e8cf9e2e5cdc248d9535a1"></a><br/></td></tr>
-<tr class="separator:aaf6a5b2d91e8cf9e2e5cdc248d9535a1"><td class="memSeparator" colspan="2">&#160;</td></tr>
+<tr class="memitem:a134c7a456c73c8224115e24eae95900c"><td class="memItemLeft" align="right" valign="top">virtual void&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="classcloud6_1_1_server_module_r_e_s_t.html#a134c7a456c73c8224115e24eae95900c">asyncUpdateDeviceData</a> (<a class="el" href="namespacecloud6.html#a5cfc435a6fbc96b4c71912911798e0d4">cloud6::DevicePtr</a> device)</td></tr>
+<tr class="memdesc:a134c7a456c73c8224115e24eae95900c"><td class="mdescLeft">&#160;</td><td class="mdescRight">Update the device data asynchronously.  <a href="#a134c7a456c73c8224115e24eae95900c"></a><br/></td></tr>
+<tr class="separator:a134c7a456c73c8224115e24eae95900c"><td class="memSeparator" colspan="2">&#160;</td></tr>
+<tr class="memitem:a2d1344e2c7968dda0850a87dd86dd119"><td class="memItemLeft" align="right" valign="top">virtual void&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="classcloud6_1_1_server_module_r_e_s_t.html#a2d1344e2c7968dda0850a87dd86dd119">onUpdateDeviceData</a> (boost::system::error_code err, <a class="el" href="namespacecloud6.html#a5cfc435a6fbc96b4c71912911798e0d4">cloud6::DevicePtr</a> device)</td></tr>
+<tr class="memdesc:a2d1344e2c7968dda0850a87dd86dd119"><td class="mdescLeft">&#160;</td><td class="mdescRight">The "update device data" callback.  <a href="#a2d1344e2c7968dda0850a87dd86dd119"></a><br/></td></tr>
+<tr class="separator:a2d1344e2c7968dda0850a87dd86dd119"><td class="memSeparator" colspan="2">&#160;</td></tr>
+<tr class="memitem:a9321e5b5f813134788eddc8f9bf7d728"><td class="memItemLeft" align="right" valign="top">virtual void&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="classcloud6_1_1_server_module_r_e_s_t.html#a9321e5b5f813134788eddc8f9bf7d728">asyncPollCommands</a> (<a class="el" href="namespacecloud6.html#a5cfc435a6fbc96b4c71912911798e0d4">cloud6::DevicePtr</a> device, <a class="el" href="namespacehive.html#afbeda3fd1bdc8c37d01bdf9f5c8274ff">String</a> const &amp;timestamp)</td></tr>
+<tr class="memdesc:a9321e5b5f813134788eddc8f9bf7d728"><td class="mdescLeft">&#160;</td><td class="mdescRight">Poll commands asynchronously.  <a href="#a9321e5b5f813134788eddc8f9bf7d728"></a><br/></td></tr>
+<tr class="separator:a9321e5b5f813134788eddc8f9bf7d728"><td class="memSeparator" colspan="2">&#160;</td></tr>
 <tr class="memitem:ae13a090604c5558ed2fd5ca20995eb5e"><td class="memItemLeft" align="right" valign="top">virtual void&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="classcloud6_1_1_server_module_r_e_s_t.html#ae13a090604c5558ed2fd5ca20995eb5e">onPollCommands</a> (boost::system::error_code err, <a class="el" href="namespacecloud6.html#a5cfc435a6fbc96b4c71912911798e0d4">cloud6::DevicePtr</a> device, std::vector&lt; <a class="el" href="classcloud6_1_1_command.html">cloud6::Command</a> &gt; const &amp;commands)</td></tr>
 <tr class="memdesc:ae13a090604c5558ed2fd5ca20995eb5e"><td class="mdescLeft">&#160;</td><td class="mdescRight">The "poll commands" callback.  <a href="#ae13a090604c5558ed2fd5ca20995eb5e"></a><br/></td></tr>
 <tr class="separator:ae13a090604c5558ed2fd5ca20995eb5e"><td class="memSeparator" colspan="2">&#160;</td></tr>
@@ -335,6 +347,76 @@ Private Attributes</h2></td></tr>
 
 </div>
 </div>
+<a class="anchor" id="a32547f322bade6cc1e02013b983c0e69"></a>
+<div class="memitem">
+<div class="memproto">
+<table class="mlabels">
+  <tr>
+  <td class="mlabels-left">
+      <table class="memname">
+        <tr>
+          <td class="memname">virtual void asyncGetServerInfo </td>
+          <td>(</td>
+          <td class="paramname"></td><td>)</td>
+          <td></td>
+        </tr>
+      </table>
+  </td>
+  <td class="mlabels-right">
+<span class="mlabels"><span class="mlabel">inline</span><span class="mlabel">protected</span><span class="mlabel">virtual</span></span>  </td>
+  </tr>
+</table>
+</div><div class="memdoc">
+
+<p>Get the server info asynchronously. </p>
+
+</div>
+</div>
+<a class="anchor" id="a59a26786f87900c5f881d18650c411d5"></a>
+<div class="memitem">
+<div class="memproto">
+<table class="mlabels">
+  <tr>
+  <td class="mlabels-left">
+      <table class="memname">
+        <tr>
+          <td class="memname">virtual void onGotServerInfo </td>
+          <td>(</td>
+          <td class="paramtype">boost::system::error_code&#160;</td>
+          <td class="paramname"><em>err</em>, </td>
+        </tr>
+        <tr>
+          <td class="paramkey"></td>
+          <td></td>
+          <td class="paramtype"><a class="el" href="classhive_1_1json_1_1_value.html">json::Value</a> const &amp;&#160;</td>
+          <td class="paramname"><em>info</em>&#160;</td>
+        </tr>
+        <tr>
+          <td></td>
+          <td>)</td>
+          <td></td><td></td>
+        </tr>
+      </table>
+  </td>
+  <td class="mlabels-right">
+<span class="mlabels"><span class="mlabel">inline</span><span class="mlabel">protected</span><span class="mlabel">virtual</span></span>  </td>
+  </tr>
+</table>
+</div><div class="memdoc">
+
+<p>The "server info" callback. </p>
+<dl class="params"><dt>Parameters</dt><dd>
+  <table class="params">
+    <tr><td class="paramdir">[in]</td><td class="paramname">err</td><td>The error code. </td></tr>
+    <tr><td class="paramdir">[in]</td><td class="paramname">info</td><td>The server information. </td></tr>
+  </table>
+  </dd>
+</dl>
+
+<p>Reimplemented in <a class="el" href="classsimple__gw_1_1_application.html#a59a26786f87900c5f881d18650c411d5">Application</a>.</p>
+
+</div>
+</div>
 <a class="anchor" id="a514c33c7597ea6f22e35f2210ad67c86"></a>
 <div class="memitem">
 <div class="memproto">
@@ -400,7 +482,6 @@ Private Attributes</h2></td></tr>
 </div><div class="memdoc">
 
 <p>The "register device" callback. </p>
-<p>Starts listening for commands from the server and starts "update" timer.</p>
 <dl class="params"><dt>Parameters</dt><dd>
   <table class="params">
     <tr><td class="paramdir">[in]</td><td class="paramname">err</td><td>The error code. </td></tr>
@@ -411,7 +492,7 @@ Private Attributes</h2></td></tr>
 
 </div>
 </div>
-<a class="anchor" id="aaf6a5b2d91e8cf9e2e5cdc248d9535a1"></a>
+<a class="anchor" id="a134c7a456c73c8224115e24eae95900c"></a>
 <div class="memitem">
 <div class="memproto">
 <table class="mlabels">
@@ -419,7 +500,7 @@ Private Attributes</h2></td></tr>
   <td class="mlabels-left">
       <table class="memname">
         <tr>
-          <td class="memname">virtual void asyncPollCommands </td>
+          <td class="memname">virtual void asyncUpdateDeviceData </td>
           <td>(</td>
           <td class="paramtype"><a class="el" href="namespacecloud6.html#a5cfc435a6fbc96b4c71912911798e0d4">cloud6::DevicePtr</a>&#160;</td>
           <td class="paramname"><em>device</em></td><td>)</td>
@@ -433,10 +514,96 @@ Private Attributes</h2></td></tr>
 </table>
 </div><div class="memdoc">
 
+<p>Update the device data asynchronously. </p>
+<dl class="params"><dt>Parameters</dt><dd>
+  <table class="params">
+    <tr><td class="paramdir">[in]</td><td class="paramname">device</td><td>The device to update. </td></tr>
+  </table>
+  </dd>
+</dl>
+
+</div>
+</div>
+<a class="anchor" id="a2d1344e2c7968dda0850a87dd86dd119"></a>
+<div class="memitem">
+<div class="memproto">
+<table class="mlabels">
+  <tr>
+  <td class="mlabels-left">
+      <table class="memname">
+        <tr>
+          <td class="memname">virtual void onUpdateDeviceData </td>
+          <td>(</td>
+          <td class="paramtype">boost::system::error_code&#160;</td>
+          <td class="paramname"><em>err</em>, </td>
+        </tr>
+        <tr>
+          <td class="paramkey"></td>
+          <td></td>
+          <td class="paramtype"><a class="el" href="namespacecloud6.html#a5cfc435a6fbc96b4c71912911798e0d4">cloud6::DevicePtr</a>&#160;</td>
+          <td class="paramname"><em>device</em>&#160;</td>
+        </tr>
+        <tr>
+          <td></td>
+          <td>)</td>
+          <td></td><td></td>
+        </tr>
+      </table>
+  </td>
+  <td class="mlabels-right">
+<span class="mlabels"><span class="mlabel">inline</span><span class="mlabel">protected</span><span class="mlabel">virtual</span></span>  </td>
+  </tr>
+</table>
+</div><div class="memdoc">
+
+<p>The "update device data" callback. </p>
+<dl class="params"><dt>Parameters</dt><dd>
+  <table class="params">
+    <tr><td class="paramdir">[in]</td><td class="paramname">err</td><td>The error code. </td></tr>
+    <tr><td class="paramdir">[in]</td><td class="paramname">device</td><td>The device. </td></tr>
+  </table>
+  </dd>
+</dl>
+
+</div>
+</div>
+<a class="anchor" id="a9321e5b5f813134788eddc8f9bf7d728"></a>
+<div class="memitem">
+<div class="memproto">
+<table class="mlabels">
+  <tr>
+  <td class="mlabels-left">
+      <table class="memname">
+        <tr>
+          <td class="memname">virtual void asyncPollCommands </td>
+          <td>(</td>
+          <td class="paramtype"><a class="el" href="namespacecloud6.html#a5cfc435a6fbc96b4c71912911798e0d4">cloud6::DevicePtr</a>&#160;</td>
+          <td class="paramname"><em>device</em>, </td>
+        </tr>
+        <tr>
+          <td class="paramkey"></td>
+          <td></td>
+          <td class="paramtype"><a class="el" href="namespacehive.html#afbeda3fd1bdc8c37d01bdf9f5c8274ff">String</a> const &amp;&#160;</td>
+          <td class="paramname"><em>timestamp</em>&#160;</td>
+        </tr>
+        <tr>
+          <td></td>
+          <td>)</td>
+          <td></td><td></td>
+        </tr>
+      </table>
+  </td>
+  <td class="mlabels-right">
+<span class="mlabels"><span class="mlabel">inline</span><span class="mlabel">protected</span><span class="mlabel">virtual</span></span>  </td>
+  </tr>
+</table>
+</div><div class="memdoc">
+
 <p>Poll commands asynchronously. </p>
 <dl class="params"><dt>Parameters</dt><dd>
   <table class="params">
     <tr><td class="paramdir">[in]</td><td class="paramname">device</td><td>The device to poll commands for. </td></tr>
+    <tr><td class="paramdir">[in]</td><td class="paramname">timestamp</td><td>The timestamp of the last received command. Empty for server's "now". </td></tr>
   </table>
   </dd>
 </dl>
@@ -677,7 +844,7 @@ Private Attributes</h2></td></tr>
 <div id="nav-path" class="navpath"><!-- id is needed for treeview function! -->
   <ul>
     <li class="navelem"><a class="el" href="namespacecloud6.html">cloud6</a></li><li class="navelem"><a class="el" href="classcloud6_1_1_server_module_r_e_s_t.html">ServerModuleREST</a></li>
-    <li class="footer">Generated on Fri Dec 28 2012 16:00:17 for DeviceHive C++ Framework by
+    <li class="footer">Generated on Thu Jan 24 2013 12:25:51 for DeviceHive C++ Framework by
     <a href="http://www.doxygen.org/index.html">
     <img class="footer" src="doxygen.png" alt="doxygen"/></a> 1.8.2 </li>
   </ul>

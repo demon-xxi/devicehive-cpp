@@ -28,7 +28,7 @@
  <tr style="height: 56px;">
   <td style="padding-left: 0.5em;">
    <div id="projectname">DeviceHive C++ Framework
-   &#160;<span id="projectnumber">1.0</span>
+   &#160;<span id="projectnumber">1.1</span>
    </div>
    <div id="projectbrief">DeviceHive framework library for C++</div>
   </td>
@@ -456,7 +456,7 @@ $(document).ready(function(){initNavTree('examples_2simple_dev_8hpp-example.html
 <div class="line">        <span class="keywordflow">if</span> (!err)</div>
 <div class="line">        {</div>
 <div class="line">            resetAllLedControls(<span class="stringliteral">&quot;0&quot;</span>);</div>
-<div class="line">            asyncPollCommands(device);</div>
+<div class="line">            asyncPollCommands(device, m_lastCommandTimestamp);</div>
 <div class="line">            asyncUpdateSensors(0); <span class="comment">// ASAP</span></div>
 <div class="line">        }</div>
 <div class="line">    }</div>
@@ -473,28 +473,29 @@ $(document).ready(function(){initNavTree('examples_2simple_dev_8hpp-example.html
 <div class="line">            <span class="keywordflow">for</span> (Iterator i = commands.begin(); i != commands.end(); ++i)</div>
 <div class="line">            {</div>
 <div class="line">                <a name="_a13"></a><a class="code" href="classcloud6_1_1_command.html" title="The command.">cloud6::Command</a> cmd = *i; <span class="comment">// copy to modify</span></div>
+<div class="line">                m_lastCommandTimestamp = cmd.<a name="a14"></a><a class="code" href="classcloud6_1_1_command.html#adba8f7570c35c016471c23c6ffe1d054" title="The command timestamp in UTC format.">timestamp</a>;</div>
 <div class="line">                <span class="keywordtype">bool</span> processed = <span class="keyword">true</span>;</div>
 <div class="line"></div>
 <div class="line">                <span class="keywordflow">try</span></div>
 <div class="line">                {</div>
-<div class="line">                    <a class="code" href="namespacehive.html#afbeda3fd1bdc8c37d01bdf9f5c8274ff" title="The string.">String</a> eqId = cmd.<a name="a14"></a><a class="code" href="classcloud6_1_1_command.html#a316a73d7aa441b3f406b92c4cfa81dd8" title="The command parameters.">params</a>[<span class="stringliteral">&quot;equipment&quot;</span>].<a name="a15"></a><a class="code" href="classhive_1_1json_1_1_value.html#a28e2e3930e88f62ae705aba30059264b" title="Get the value as STRING.">asString</a>();</div>
+<div class="line">                    <a class="code" href="namespacehive.html#afbeda3fd1bdc8c37d01bdf9f5c8274ff" title="The string.">String</a> eqId = cmd.<a name="a15"></a><a class="code" href="classcloud6_1_1_command.html#a316a73d7aa441b3f406b92c4cfa81dd8" title="The command parameters.">params</a>[<span class="stringliteral">&quot;equipment&quot;</span>].<a name="a16"></a><a class="code" href="classhive_1_1json_1_1_value.html#a28e2e3930e88f62ae705aba30059264b" title="Get the value as STRING.">asString</a>();</div>
 <div class="line"></div>
 <div class="line">                    <a class="code" href="namespacecloud6.html#a731304d76a9e9c9932709243318f7422" title="The equipment shared pointer type.">cloud6::EquipmentPtr</a> eq = device-&gt;findEquipmentById(eqId);</div>
-<div class="line">                    <span class="keywordflow">if</span> (boost::iequals(cmd.<a name="a16"></a><a class="code" href="classcloud6_1_1_command.html#a9a2326f35466e54c36c070829245c557" title="The command name.">name</a>, <span class="stringliteral">&quot;UpdateLedState&quot;</span>))</div>
+<div class="line">                    <span class="keywordflow">if</span> (boost::iequals(cmd.<a name="a17"></a><a class="code" href="classcloud6_1_1_command.html#a9a2326f35466e54c36c070829245c557" title="The command name.">name</a>, <span class="stringliteral">&quot;UpdateLedState&quot;</span>))</div>
 <div class="line">                    {</div>
-<div class="line">                        <span class="keywordflow">if</span> (<a name="a17"></a><a class="code" href="classsimple__dev_1_1_led_control.html#a2917dc3941793fb2f503bc8bbaa2ad95" title="The shared pointer type.">LedControl::SharedPtr</a> led = boost::shared_dynamic_cast&lt;LedControl&gt;(eq))</div>
+<div class="line">                        <span class="keywordflow">if</span> (<a name="a18"></a><a class="code" href="classsimple__dev_1_1_led_control.html#a2917dc3941793fb2f503bc8bbaa2ad95" title="The shared pointer type.">LedControl::SharedPtr</a> led = boost::shared_dynamic_cast&lt;LedControl&gt;(eq))</div>
 <div class="line">                        {</div>
 <div class="line">                            <a class="code" href="namespacehive.html#afbeda3fd1bdc8c37d01bdf9f5c8274ff" title="The string.">String</a> state = cmd.<a class="code" href="classcloud6_1_1_command.html#a316a73d7aa441b3f406b92c4cfa81dd8" title="The command parameters.">params</a>[<span class="stringliteral">&quot;state&quot;</span>].<a class="code" href="classhive_1_1json_1_1_value.html#a28e2e3930e88f62ae705aba30059264b" title="Get the value as STRING.">asString</a>();</div>
 <div class="line">                            led-&gt;setState(state);</div>
 <div class="line"></div>
-<div class="line">                            cmd.<a name="a18"></a><a class="code" href="classcloud6_1_1_command.html#a4e531c185af848083db0808335a78168" title="Command status.">status</a> = <span class="stringliteral">&quot;Success&quot;</span>;</div>
-<div class="line">                            cmd.<a name="a19"></a><a class="code" href="classcloud6_1_1_command.html#ade3e4dd136fe976f4d00476ead564457" title="Command result.">result</a> = <span class="stringliteral">&quot;Completed&quot;</span>;</div>
+<div class="line">                            cmd.<a name="a19"></a><a class="code" href="classcloud6_1_1_command.html#a4e531c185af848083db0808335a78168" title="Command status.">status</a> = <span class="stringliteral">&quot;Success&quot;</span>;</div>
+<div class="line">                            cmd.<a name="a20"></a><a class="code" href="classcloud6_1_1_command.html#ade3e4dd136fe976f4d00476ead564457" title="Command result.">result</a> = <span class="stringliteral">&quot;Completed&quot;</span>;</div>
 <div class="line"></div>
-<div class="line">                            <a name="_a20"></a><a class="code" href="classhive_1_1json_1_1_value.html" title="The JSON value.">json::Value</a> ntf_params;</div>
+<div class="line">                            <a name="_a21"></a><a class="code" href="classhive_1_1json_1_1_value.html" title="The JSON value.">json::Value</a> ntf_params;</div>
 <div class="line">                            ntf_params[<span class="stringliteral">&quot;equipment&quot;</span>] = led-&gt;id;</div>
 <div class="line">                            ntf_params[<span class="stringliteral">&quot;state&quot;</span>] = state;</div>
 <div class="line">                            asyncInsertNotification(device,</div>
-<div class="line">                                <a name="_a21"></a><a class="code" href="classcloud6_1_1_notification.html" title="The notification.">cloud6::Notification</a>(<span class="stringliteral">&quot;equipment&quot;</span>, ntf_params));</div>
+<div class="line">                                <a name="_a22"></a><a class="code" href="classcloud6_1_1_notification.html" title="The notification.">cloud6::Notification</a>(<span class="stringliteral">&quot;equipment&quot;</span>, ntf_params));</div>
 <div class="line">                        }</div>
 <div class="line">                        <span class="keywordflow">else</span></div>
 <div class="line">                            <span class="keywordflow">throw</span> std::runtime_error(<span class="stringliteral">&quot;unknown equipment&quot;</span>);</div>
@@ -504,7 +505,7 @@ $(document).ready(function(){initNavTree('examples_2simple_dev_8hpp-example.html
 <div class="line">                }</div>
 <div class="line">                <span class="keywordflow">catch</span> (std::exception <span class="keyword">const</span>&amp; ex)</div>
 <div class="line">                {</div>
-<div class="line">                    <a name="a22"></a><a class="code" href="log_8hpp.html#a36cc4f1f3e9031a86681c365f8ee6da5" title="Send a log message at ERROR level.">HIVELOG_ERROR</a>(m_log, <span class="stringliteral">&quot;handle command error: &quot;</span></div>
+<div class="line">                    <a name="a23"></a><a class="code" href="log_8hpp.html#a36cc4f1f3e9031a86681c365f8ee6da5" title="Send a log message at ERROR level.">HIVELOG_ERROR</a>(m_log, <span class="stringliteral">&quot;handle command error: &quot;</span></div>
 <div class="line">                        &lt;&lt; ex.what());</div>
 <div class="line"></div>
 <div class="line">                    cmd.<a class="code" href="classcloud6_1_1_command.html#a4e531c185af848083db0808335a78168" title="Command status.">status</a> = <span class="stringliteral">&quot;Failed&quot;</span>;</div>
@@ -515,7 +516,7 @@ $(document).ready(function(){initNavTree('examples_2simple_dev_8hpp-example.html
 <div class="line">                    asyncUpdateCommand(device, cmd);</div>
 <div class="line">            }</div>
 <div class="line"></div>
-<div class="line">            asyncPollCommands(device); <span class="comment">// start poll again</span></div>
+<div class="line">            asyncPollCommands(device, m_lastCommandTimestamp); <span class="comment">// start poll again</span></div>
 <div class="line">        }</div>
 <div class="line">    }</div>
 <div class="line"></div>
@@ -547,7 +548,7 @@ $(document).ready(function(){initNavTree('examples_2simple_dev_8hpp-example.html
 <div class="line">            <span class="keywordflow">for</span> (<span class="keywordtype">size_t</span> i = 0; i &lt; N; ++i)</div>
 <div class="line">            {</div>
 <div class="line">                <a class="code" href="namespacecloud6.html#a731304d76a9e9c9932709243318f7422" title="The equipment shared pointer type.">cloud6::EquipmentPtr</a> eq = m_device-&gt;equipment[i];</div>
-<div class="line">                <span class="keywordflow">if</span> (<a name="a23"></a><a class="code" href="classsimple__dev_1_1_temp_sensor.html#a32c44f02e0f7b150c59e4218e974dcd1" title="The shared pointer type.">TempSensor::SharedPtr</a> sensor = boost::shared_dynamic_cast&lt;TempSensor&gt;(eq))</div>
+<div class="line">                <span class="keywordflow">if</span> (<a name="a24"></a><a class="code" href="classsimple__dev_1_1_temp_sensor.html#a32c44f02e0f7b150c59e4218e974dcd1" title="The shared pointer type.">TempSensor::SharedPtr</a> sensor = boost::shared_dynamic_cast&lt;TempSensor&gt;(eq))</div>
 <div class="line">                {</div>
 <div class="line">                    <a class="code" href="namespacehive.html#afbeda3fd1bdc8c37d01bdf9f5c8274ff" title="The string.">String</a> <span class="keyword">const</span> val = sensor-&gt;getValue();</div>
 <div class="line">                    <span class="keywordflow">if</span> (sensor-&gt;haveToSend(val))</div>
@@ -566,7 +567,7 @@ $(document).ready(function(){initNavTree('examples_2simple_dev_8hpp-example.html
 <div class="line">            asyncUpdateSensors(<a class="code" href="namespacesimple__dev.html#a726ca809ffd3d67ab4b8476646f26635aa172685de3db4ce6f132d50b087c5b15" title="Try to update temperature sensors each X seconds.">SENSORS_UPDATE_TIMEOUT</a>); <span class="comment">// start again</span></div>
 <div class="line">        }</div>
 <div class="line">        <span class="keywordflow">else</span> <span class="keywordflow">if</span> (err == boost::asio::error::operation_aborted)</div>
-<div class="line">            <a name="a24"></a><a class="code" href="log_8hpp.html#afc380ebe7c003adb3bc83658ceed35ad" title="Send a log string at DEBUG level.">HIVELOG_DEBUG_STR</a>(m_log, <span class="stringliteral">&quot;\&quot;update\&quot; timer cancelled&quot;</span>);</div>
+<div class="line">            <a name="a25"></a><a class="code" href="log_8hpp.html#afc380ebe7c003adb3bc83658ceed35ad" title="Send a log string at DEBUG level.">HIVELOG_DEBUG_STR</a>(m_log, <span class="stringliteral">&quot;\&quot;update\&quot; timer cancelled&quot;</span>);</div>
 <div class="line">        <span class="keywordflow">else</span></div>
 <div class="line">        {</div>
 <div class="line">            <a class="code" href="log_8hpp.html#a36cc4f1f3e9031a86681c365f8ee6da5" title="Send a log message at ERROR level.">HIVELOG_ERROR</a>(m_log, <span class="stringliteral">&quot;\&quot;update\&quot; timer error: [&quot;</span></div>
@@ -601,6 +602,7 @@ $(document).ready(function(){initNavTree('examples_2simple_dev_8hpp-example.html
 <div class="line"><span class="keyword">private</span>:</div>
 <div class="line">    boost::asio::deadline_timer m_updateTimer; <span class="comment">///&lt; @brief The update timer.</span></div>
 <div class="line"><span class="comment"></span>    <a class="code" href="namespacecloud6.html#a5cfc435a6fbc96b4c71912911798e0d4" title="The device shared pointer type.">cloud6::DevicePtr</a> m_device; <span class="comment">///&lt; @brief The device.</span></div>
+<div class="line"><span class="comment"></span>    <a class="code" href="namespacehive.html#afbeda3fd1bdc8c37d01bdf9f5c8274ff" title="The string.">String</a> m_lastCommandTimestamp; <span class="comment">///&lt; @brief The timestamp of the last received command.</span></div>
 <div class="line"><span class="comment"></span>};</div>
 <div class="line"></div>
 <div class="line"><span class="comment"></span></div>
@@ -616,7 +618,7 @@ $(document).ready(function(){initNavTree('examples_2simple_dev_8hpp-example.html
 <div class="line"><span class="comment">*/</span></div>
 <div class="line"><span class="keyword">class </span>ApplicationWS:</div>
 <div class="line">    <span class="keyword">public</span> <a class="code" href="classbasic__app_1_1_application.html" title="The application skeleton.">basic_app::Application</a>,</div>
-<div class="line">    <span class="keyword">public</span> <a name="_a25"></a><a class="code" href="classcloud7_1_1_server_module_w_s.html" title="The WebSocket Server API submodule.">cloud7::ServerModuleWS</a></div>
+<div class="line">    <span class="keyword">public</span> <a name="_a26"></a><a class="code" href="classcloud7_1_1_server_module_w_s.html" title="The WebSocket Server API submodule.">cloud7::ServerModuleWS</a></div>
 <div class="line">{</div>
 <div class="line">    <span class="keyword">typedef</span> <a class="code" href="classbasic__app_1_1_application.html" title="The application skeleton.">basic_app::Application</a> Base; <span class="comment">///&lt; @brief The base type.</span></div>
 <div class="line"><span class="comment"></span>    <span class="keyword">typedef</span> ApplicationWS This; <span class="comment">///&lt; @brief The this type alias.</span></div>
@@ -720,7 +722,7 @@ $(document).ready(function(){initNavTree('examples_2simple_dev_8hpp-example.html
 <div class="line"></div>
 <div class="line">        <span class="keywordflow">if</span> (1) <span class="comment">// create device</span></div>
 <div class="line">        {</div>
-<div class="line">            <a name="a26"></a><a class="code" href="namespacecloud6.html#a5cfc435a6fbc96b4c71912911798e0d4" title="The device shared pointer type.">cloud7::DevicePtr</a> device = <a class="code" href="classcloud6_1_1_device.html#add7ab61f5ae2f334405efcd41ca1c3c4" title="The factory method.">cloud7::Device::create</a>(deviceId, deviceName, deviceKey,</div>
+<div class="line">            <a name="a27"></a><a class="code" href="namespacecloud6.html#a5cfc435a6fbc96b4c71912911798e0d4" title="The device shared pointer type.">cloud7::DevicePtr</a> device = <a class="code" href="classcloud6_1_1_device.html#add7ab61f5ae2f334405efcd41ca1c3c4" title="The factory method.">cloud7::Device::create</a>(deviceId, deviceName, deviceKey,</div>
 <div class="line">                <a class="code" href="classcloud6_1_1_device_1_1_class.html#a5a0b772eae6af54cf28b04e2e550e76c" title="The factory method.">cloud7::Device::Class::create</a>(deviceClassName, deviceClassVersion, <span class="keyword">false</span>, <a class="code" href="namespacesimple__dev.html#a726ca809ffd3d67ab4b8476646f26635a6ca50011e1c6f39397f32634d03589e5">DEVICE_OFFLINE_TIMEOUT</a>),</div>
 <div class="line">                <a class="code" href="classcloud6_1_1_network.html#aa1afeda7b7096504974c5d4a07e3d989" title="The factory method.">cloud7::Network::create</a>(networkName, networkKey, networkDesc));</div>
 <div class="line">            device-&gt;status = <span class="stringliteral">&quot;Online&quot;</span>;</div>
@@ -839,14 +841,14 @@ $(document).ready(function(){initNavTree('examples_2simple_dev_8hpp-example.html
 <div class="line">            <span class="keywordflow">if</span> (!m_device || deviceId != m_device-&gt;id)</div>
 <div class="line">                <span class="keywordflow">throw</span> std::runtime_error(<span class="stringliteral">&quot;unknown device identifier&quot;</span>);</div>
 <div class="line"></div>
-<div class="line">            <a class="code" href="classcloud6_1_1_command.html" title="The command.">cloud7::Command</a> cmd = <a name="a27"></a><a class="code" href="classcloud6_1_1_serializer.html#a4dfd79096730685fefd301ef2d3bba90" title="Convert the JSON value to the command.">cloud7::Serializer::json2cmd</a>(params[<span class="stringliteral">&quot;command&quot;</span>]);</div>
+<div class="line">            <a class="code" href="classcloud6_1_1_command.html" title="The command.">cloud7::Command</a> cmd = <a name="a28"></a><a class="code" href="classcloud6_1_1_serializer.html#a4dfd79096730685fefd301ef2d3bba90" title="Convert the JSON value to the command.">cloud7::Serializer::json2cmd</a>(params[<span class="stringliteral">&quot;command&quot;</span>]);</div>
 <div class="line">            <span class="keywordtype">bool</span> processed = <span class="keyword">true</span>;</div>
 <div class="line"></div>
 <div class="line">            <span class="keywordflow">try</span></div>
 <div class="line">            {</div>
 <div class="line">                <a class="code" href="namespacehive.html#afbeda3fd1bdc8c37d01bdf9f5c8274ff" title="The string.">String</a> eqId = cmd.<a class="code" href="classcloud6_1_1_command.html#a316a73d7aa441b3f406b92c4cfa81dd8" title="The command parameters.">params</a>[<span class="stringliteral">&quot;equipment&quot;</span>].<a class="code" href="classhive_1_1json_1_1_value.html#a28e2e3930e88f62ae705aba30059264b" title="Get the value as STRING.">asString</a>();</div>
 <div class="line"></div>
-<div class="line">                <a name="a28"></a><a class="code" href="namespacecloud6.html#a731304d76a9e9c9932709243318f7422" title="The equipment shared pointer type.">cloud7::EquipmentPtr</a> eq = m_device-&gt;findEquipmentById(eqId);</div>
+<div class="line">                <a name="a29"></a><a class="code" href="namespacecloud6.html#a731304d76a9e9c9932709243318f7422" title="The equipment shared pointer type.">cloud7::EquipmentPtr</a> eq = m_device-&gt;findEquipmentById(eqId);</div>
 <div class="line">                <span class="keywordflow">if</span> (boost::iequals(cmd.<a class="code" href="classcloud6_1_1_command.html#a9a2326f35466e54c36c070829245c557" title="The command name.">name</a>, <span class="stringliteral">&quot;UpdateLedState&quot;</span>))</div>
 <div class="line">                {</div>
 <div class="line">                    <span class="keywordflow">if</span> (<a class="code" href="classsimple__dev_1_1_led_control.html#a2917dc3941793fb2f503bc8bbaa2ad95" title="The shared pointer type.">LedControl::SharedPtr</a> led = boost::shared_dynamic_cast&lt;LedControl&gt;(eq))</div>
@@ -976,22 +978,22 @@ $(document).ready(function(){initNavTree('examples_2simple_dev_8hpp-example.html
 <div class="line"><span class="comment">@param[in] argv The command line arguments.</span></div>
 <div class="line"><span class="comment">@param[in] useNewWS Use new websocket service flag.</span></div>
 <div class="line"><span class="comment">*/</span></div>
-<div class="line"><span class="keyword">inline</span> <span class="keywordtype">void</span> <a name="a29"></a><a class="code" href="namespacesimple__dev.html#a80cf1daa8fab5eae40e370be7d1b020c" title="The simple device application entry point.">main</a>(<span class="keywordtype">int</span> argc, <span class="keyword">const</span> <span class="keywordtype">char</span>* argv[], <span class="keywordtype">bool</span> useNewWS = <span class="keyword">true</span>)</div>
+<div class="line"><span class="keyword">inline</span> <span class="keywordtype">void</span> <a name="a30"></a><a class="code" href="namespacesimple__dev.html#a80cf1daa8fab5eae40e370be7d1b020c" title="The simple device application entry point.">main</a>(<span class="keywordtype">int</span> argc, <span class="keyword">const</span> <span class="keywordtype">char</span>* argv[], <span class="keywordtype">bool</span> useNewWS = <span class="keyword">true</span>)</div>
 <div class="line">{</div>
 <div class="line">    { <span class="comment">// configure logging</span></div>
-<div class="line">        <a class="code" href="classhive_1_1log_1_1_target.html#aee8b75c99333d93584ad6da3ecb2e3fe" title="The shared pointer type.">log::Target::SharedPtr</a> log_file = <a name="a30"></a><a class="code" href="classhive_1_1log_1_1_target.html#a6d18b5cb9afd8313c52008d6c63c79df" title="The factory method.">log::Target::File::create</a>(<span class="stringliteral">&quot;simple_dev.log&quot;</span>);</div>
-<div class="line">        <a class="code" href="classhive_1_1log_1_1_target.html#aee8b75c99333d93584ad6da3ecb2e3fe" title="The shared pointer type.">log::Target::SharedPtr</a> log_console = <a name="a31"></a><a class="code" href="classhive_1_1log_1_1_logger.html#aa288e1d280a97ee13840fa5b9d08f775" title="Get the root logger.">log::Logger::root</a>().<a name="a32"></a><a class="code" href="classhive_1_1log_1_1_logger.html#a2e6cebab9ebaaf0e09715269e5ac3009" title="Get the target.">getTarget</a>();</div>
-<div class="line">        <a class="code" href="classhive_1_1log_1_1_logger.html#aa288e1d280a97ee13840fa5b9d08f775" title="Get the root logger.">log::Logger::root</a>().<a name="a33"></a><a class="code" href="classhive_1_1log_1_1_logger.html#a45fcb7516fd49eaf204895f29a0874fe" title="Set the target.">setTarget</a>(<a class="code" href="classhive_1_1log_1_1_target.html#a6d18b5cb9afd8313c52008d6c63c79df" title="The factory method.">log::Target::Tie::create</a>(log_file, log_console));</div>
-<div class="line">        <a class="code" href="classhive_1_1log_1_1_logger.html#aa288e1d280a97ee13840fa5b9d08f775" title="Get the root logger.">log::Logger::root</a>().<a name="a34"></a><a class="code" href="classhive_1_1log_1_1_logger.html#af3c02bfa8fab7fc22c9839ad82903dce" title="Set the logging level.">setLevel</a>(<a name="a35"></a><a class="code" href="namespacehive_1_1log.html#a221b779e6bb7b8d40677d7642bfefac5a1ca076c143f2ec60ba02c86573af9da3" title="The TRACE level.">log::LEVEL_TRACE</a>);</div>
-<div class="line">        <a name="_a36"></a><a class="code" href="classhive_1_1log_1_1_logger.html" title="The logger.">log::Logger</a>(<span class="stringliteral">&quot;/hive/http&quot;</span>).<a class="code" href="classhive_1_1log_1_1_logger.html#a45fcb7516fd49eaf204895f29a0874fe" title="Set the target.">setTarget</a>(log_file).<a class="code" href="classhive_1_1log_1_1_logger.html#af3c02bfa8fab7fc22c9839ad82903dce" title="Set the logging level.">setLevel</a>(<a name="a37"></a><a class="code" href="namespacehive_1_1log.html#a221b779e6bb7b8d40677d7642bfefac5a210bac66f34a56114215d54588b8c7f3" title="The DEBUG level.">log::LEVEL_DEBUG</a>); <span class="comment">// disable annoying messages</span></div>
-<div class="line">        log_console-&gt;setFormat(<a name="a38"></a><a class="code" href="classhive_1_1log_1_1_format.html#a5c721bfbc7afcd8ba55cfdd659c7e718" title="The factory method.">log::Format::create</a>(<span class="stringliteral">&quot;%N %L %M\n&quot;</span>));</div>
+<div class="line">        <a class="code" href="classhive_1_1log_1_1_target.html#aee8b75c99333d93584ad6da3ecb2e3fe" title="The shared pointer type.">log::Target::SharedPtr</a> log_file = <a name="a31"></a><a class="code" href="classhive_1_1log_1_1_target.html#a6d18b5cb9afd8313c52008d6c63c79df" title="The factory method.">log::Target::File::create</a>(<span class="stringliteral">&quot;simple_dev.log&quot;</span>);</div>
+<div class="line">        <a class="code" href="classhive_1_1log_1_1_target.html#aee8b75c99333d93584ad6da3ecb2e3fe" title="The shared pointer type.">log::Target::SharedPtr</a> log_console = <a name="a32"></a><a class="code" href="classhive_1_1log_1_1_logger.html#aa288e1d280a97ee13840fa5b9d08f775" title="Get the root logger.">log::Logger::root</a>().<a name="a33"></a><a class="code" href="classhive_1_1log_1_1_logger.html#a2e6cebab9ebaaf0e09715269e5ac3009" title="Get the target.">getTarget</a>();</div>
+<div class="line">        <a class="code" href="classhive_1_1log_1_1_logger.html#aa288e1d280a97ee13840fa5b9d08f775" title="Get the root logger.">log::Logger::root</a>().<a name="a34"></a><a class="code" href="classhive_1_1log_1_1_logger.html#a45fcb7516fd49eaf204895f29a0874fe" title="Set the target.">setTarget</a>(<a class="code" href="classhive_1_1log_1_1_target.html#a6d18b5cb9afd8313c52008d6c63c79df" title="The factory method.">log::Target::Tie::create</a>(log_file, log_console));</div>
+<div class="line">        <a class="code" href="classhive_1_1log_1_1_logger.html#aa288e1d280a97ee13840fa5b9d08f775" title="Get the root logger.">log::Logger::root</a>().<a name="a35"></a><a class="code" href="classhive_1_1log_1_1_logger.html#af3c02bfa8fab7fc22c9839ad82903dce" title="Set the logging level.">setLevel</a>(<a name="a36"></a><a class="code" href="namespacehive_1_1log.html#a221b779e6bb7b8d40677d7642bfefac5a1ca076c143f2ec60ba02c86573af9da3" title="The TRACE level.">log::LEVEL_TRACE</a>);</div>
+<div class="line">        <a name="_a37"></a><a class="code" href="classhive_1_1log_1_1_logger.html" title="The logger.">log::Logger</a>(<span class="stringliteral">&quot;/hive/http&quot;</span>).<a class="code" href="classhive_1_1log_1_1_logger.html#a45fcb7516fd49eaf204895f29a0874fe" title="Set the target.">setTarget</a>(log_file).<a class="code" href="classhive_1_1log_1_1_logger.html#af3c02bfa8fab7fc22c9839ad82903dce" title="Set the logging level.">setLevel</a>(<a name="a38"></a><a class="code" href="namespacehive_1_1log.html#a221b779e6bb7b8d40677d7642bfefac5a210bac66f34a56114215d54588b8c7f3" title="The DEBUG level.">log::LEVEL_DEBUG</a>); <span class="comment">// disable annoying messages</span></div>
+<div class="line">        log_console-&gt;setFormat(<a name="a39"></a><a class="code" href="classhive_1_1log_1_1_format.html#a00280823d23a1360c13c162220c83882" title="The factory method.">log::Format::create</a>(<span class="stringliteral">&quot;%N %L %M\n&quot;</span>));</div>
 <div class="line">        log_console-&gt;setMinimumLevel(<a class="code" href="namespacehive_1_1log.html#a221b779e6bb7b8d40677d7642bfefac5a210bac66f34a56114215d54588b8c7f3" title="The DEBUG level.">log::LEVEL_DEBUG</a>);</div>
 <div class="line">    }</div>
 <div class="line"></div>
 <div class="line">    <span class="keywordflow">if</span> (useNewWS)</div>
-<div class="line">        <a name="a39"></a><a class="code" href="classsimple__dev_1_1_application_w_s.html#a9ff75310716593d5a291ba43c2a96d49" title="The factory method.">ApplicationWS::create</a>(argc, argv)-&gt;run();</div>
+<div class="line">        <a name="a40"></a><a class="code" href="classsimple__dev_1_1_application_w_s.html#a9ff75310716593d5a291ba43c2a96d49" title="The factory method.">ApplicationWS::create</a>(argc, argv)-&gt;run();</div>
 <div class="line">    <span class="keywordflow">else</span></div>
-<div class="line">        <a name="a40"></a><a class="code" href="classsimple__dev_1_1_application.html#a9ff75310716593d5a291ba43c2a96d49" title="The factory method.">Application::create</a>(argc, argv)-&gt;run();</div>
+<div class="line">        <a name="a41"></a><a class="code" href="classsimple__dev_1_1_application.html#a9ff75310716593d5a291ba43c2a96d49" title="The factory method.">Application::create</a>(argc, argv)-&gt;run();</div>
 <div class="line">}</div>
 <div class="line"></div>
 <div class="line">} <span class="comment">// simple_dev namespace</span></div>
@@ -1189,7 +1191,7 @@ $(document).ready(function(){initNavTree('examples_2simple_dev_8hpp-example.html
 <!-- start footer part -->
 <div id="nav-path" class="navpath"><!-- id is needed for treeview function! -->
   <ul>
-    <li class="footer">Generated on Fri Dec 28 2012 16:00:17 for DeviceHive C++ Framework by
+    <li class="footer">Generated on Thu Jan 24 2013 12:25:51 for DeviceHive C++ Framework by
     <a href="http://www.doxygen.org/index.html">
     <img class="footer" src="doxygen.png" alt="doxygen"/></a> 1.8.2 </li>
   </ul>

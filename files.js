@@ -20,6 +20,7 @@ var files =
     [ "http.hpp", "http_8hpp.html", "http_8hpp" ],
     [ "json.hpp", "json_8hpp.html", "json_8hpp" ],
     [ "log.hpp", "log_8hpp.html", "log_8hpp" ],
+    [ "logcfg.hpp", "logcfg_8hpp.html", "logcfg_8hpp" ],
     [ "misc.hpp", "misc_8hpp.html", "misc_8hpp" ],
     [ "pch.hpp", "pch_8hpp.html", "pch_8hpp" ],
     [ "simple_dev.cpp", "simple__dev_8cpp.html", "simple__dev_8cpp" ],

@@ -6,6 +6,7 @@ var classzigbee__gw_1_1_application_1_1_z_device =
     [ "m_rx_buf", "classzigbee__gw_1_1_application_1_1_z_device.html#a4025093f7ae810675aabb943d4e7a55d", null ],
     [ "device", "classzigbee__gw_1_1_application_1_1_z_device.html#ad1e53b99f2a396889815f9c77e99721f", null ],
     [ "deviceRegistered", "classzigbee__gw_1_1_application_1_1_z_device.html#a0748f4a19af22934b3f61f01a90277b5", null ],
+    [ "m_lastCommandTimestamp", "classzigbee__gw_1_1_application_1_1_z_device.html#ab86685bc5488bd9b8a197849e4eeea87", null ],
     [ "delayedNotifications", "classzigbee__gw_1_1_application_1_1_z_device.html#a4d4a34b2f43cf014356157f66d8cc9c4", null ],
     [ "gw", "classzigbee__gw_1_1_application_1_1_z_device.html#a901a874b9a6bda5bcad5b6354a4e7e54", null ]
 ];

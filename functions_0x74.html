@@ -28,7 +28,7 @@
  <tr style="height: 56px;">
   <td style="padding-left: 0.5em;">
    <div id="projectname">DeviceHive C++ Framework
-   &#160;<span id="projectnumber">1.0</span>
+   &#160;<span id="projectnumber">1.1</span>
    </div>
    <div id="projectbrief">DeviceHive framework library for C++</div>
   </td>
@@ -89,11 +89,17 @@ $(document).ready(function(){initNavTree('functions_0x74.html','');});
 <div class="textblock">Here is a list of all struct and union fields with links to the structures/unions they belong to:</div>
 
 <h3><a class="anchor" id="index_t"></a>- t -</h3><ul>
+<li>Target()
+: <a class="el" href="classhive_1_1log_1_1_target.html#a58de8dd9bd806a41b4f5add66fbdea44">Target</a>
+</li>
 <li>target
 : <a class="el" href="classhive_1_1log_1_1_logger_1_1_impl.html#a6c1e5a555d9bd981b9930b42398e8dde">Logger::Impl</a>
 </li>
-<li>Target()
-: <a class="el" href="classhive_1_1log_1_1_target.html#a58de8dd9bd806a41b4f5add66fbdea44">Target</a>
+<li>TargetPtr
+: <a class="el" href="classlogcfg_1_1_log_config.html#a8a1e349ac1c9d737519eb86c1a5afd7b">LogConfig</a>
+</li>
+<li>targets
+: <a class="el" href="structlogcfg_1_1_log_config_1_1_logger_info.html#a4f8ed9c34199cd1a0adcd93069e0e831">LogConfig::LoggerInfo</a>
 </li>
 <li>Task()
 : <a class="el" href="classhive_1_1http_1_1_client_1_1_task.html#a3f7d3a6f4eb57685caa4406770409b99">Client::Task</a>
@@ -102,8 +108,8 @@ $(document).ready(function(){initNavTree('functions_0x74.html','');});
 : <a class="el" href="classhive_1_1http_1_1_client.html#af2f6ae7f2313254d429c67c0b68d0059">Client</a>
 </li>
 <li>TcpSocket
-: <a class="el" href="classhive_1_1http_1_1_connection_1_1_simple.html#a0105cefbb00811dacf849a0ae1e3843c">Connection::Simple</a>
-, <a class="el" href="classhive_1_1http_1_1_connection_1_1_secure.html#a0105cefbb00811dacf849a0ae1e3843c">Connection::Secure</a>
+: <a class="el" href="classhive_1_1http_1_1_connection_1_1_secure.html#a0105cefbb00811dacf849a0ae1e3843c">Connection::Secure</a>
+, <a class="el" href="classhive_1_1http_1_1_connection_1_1_simple.html#a0105cefbb00811dacf849a0ae1e3843c">Connection::Simple</a>
 </li>
 <li>tdump()
 : <a class="el" href="classxbee_1_1_debug.html#a9cae7f5fd6aea5db09fb8974ea086e0d">Debug</a>
@@ -118,20 +124,20 @@ $(document).ready(function(){initNavTree('functions_0x74.html','');});
 : <a class="el" href="classhive_1_1ws13_1_1_frame_1_1_text.html#a685ed5195435d2b3e75433f46aec6e1e">Frame::Text</a>
 </li>
 <li>This
-: <a class="el" href="classxbee_1_1_a_p_i.html#a0d4d19fb910ee423a7e359c820872c8b">API&lt; StreamT &gt;</a>
+: <a class="el" href="classgateway_1_1_a_p_i.html#a0d4d19fb910ee423a7e359c820872c8b">API&lt; StreamT &gt;</a>
+, <a class="el" href="classgateway_1_1_serial_module.html#a1e0a464ee31a5d4fecf966874aa09b9b">SerialModule</a>
+, <a class="el" href="classxbee_1_1_a_p_i.html#a0d4d19fb910ee423a7e359c820872c8b">API&lt; StreamT &gt;</a>
 , <a class="el" href="classhive_1_1bin_1_1_transceiver.html#a544e0ad7cef690476c43d6f6a5b588eb">Transceiver&lt; StreamT, FrameT &gt;</a>
 , <a class="el" href="classhive_1_1ws13_1_1_web_socket.html#ae1f77ba19ce8086c5a1141fe906d5048">WebSocket</a>
 , <a class="el" href="classsimple__dev_1_1_application.html#a4c3be31e776bb49d976aed7c8eaea8fe">Application</a>
 , <a class="el" href="classsimple__dev_1_1_application_w_s.html#a77cfe703aaa776d97710970b561dc8fc">ApplicationWS</a>
 , <a class="el" href="classsimple__gw_1_1_application.html#a4c3be31e776bb49d976aed7c8eaea8fe">Application</a>
-, <a class="el" href="classcloud6_1_1_server_module_r_e_s_t.html#ad2728fe3762baa38c478996265468163">ServerModuleREST</a>
 , <a class="el" href="classsimple__gw_1_1_application_w_s.html#a77cfe703aaa776d97710970b561dc8fc">ApplicationWS</a>
 , <a class="el" href="classzigbee__gw_1_1_application.html#a4c3be31e776bb49d976aed7c8eaea8fe">Application</a>
-, <a class="el" href="classcloud7_1_1_web_socket_a_p_i.html#ae082537cbc0a2620f329c82d426c01cb">WebSocketAPI</a>
+, <a class="el" href="classcloud6_1_1_server_module_r_e_s_t.html#ad2728fe3762baa38c478996265468163">ServerModuleREST</a>
 , <a class="el" href="classzigbee__gw_1_1_application_w_s.html#a77cfe703aaa776d97710970b561dc8fc">ApplicationWS</a>
+, <a class="el" href="classcloud7_1_1_web_socket_a_p_i.html#ae082537cbc0a2620f329c82d426c01cb">WebSocketAPI</a>
 , <a class="el" href="classcloud7_1_1_server_module_w_s.html#a6c26289201475fe0f8d5c146d09207e1">ServerModuleWS</a>
-, <a class="el" href="classgateway_1_1_a_p_i.html#a0d4d19fb910ee423a7e359c820872c8b">API&lt; StreamT &gt;</a>
-, <a class="el" href="classgateway_1_1_serial_module.html#a1e0a464ee31a5d4fecf966874aa09b9b">SerialModule</a>
 </li>
 <li>ThisType
 : <a class="el" href="classcloud6_1_1_server_a_p_i.html#a6e700ec0aa83d2363cdfca6d0516cfae">ServerAPI</a>
@@ -139,17 +145,18 @@ $(document).ready(function(){initNavTree('functions_0x74.html','');});
 <li>Tie()
 : <a class="el" href="classhive_1_1log_1_1_target_1_1_tie.html#ae6f40e7d5a1fd0c1df7a02e1531fa439">Target::Tie</a>
 </li>
-<li>timer
-: <a class="el" href="classhive_1_1http_1_1_client_1_1_task.html#aaf7e0389622e8f7b78393ee10d8e93a4">Client::Task</a>
-</li>
 <li>Timer
 : <a class="el" href="classhive_1_1http_1_1_client.html#a86c15b6c184554db5646dd7b4acbcf0d">Client</a>
+</li>
+<li>timer
+: <a class="el" href="classhive_1_1http_1_1_client_1_1_task.html#aaf7e0389622e8f7b78393ee10d8e93a4">Client::Task</a>
 </li>
 <li>timer_started
 : <a class="el" href="classhive_1_1http_1_1_client_1_1_task.html#affd943ea98328b0b38a0e9ef44500b73">Client::Task</a>
 </li>
 <li>timestamp
-: <a class="el" href="classhive_1_1log_1_1_message.html#a2da6a70f721bc9c5d0526f9ad1f42ddb">Message</a>
+: <a class="el" href="classcloud6_1_1_command.html#adba8f7570c35c016471c23c6ffe1d054">Command</a>
+, <a class="el" href="classhive_1_1log_1_1_message.html#a2da6a70f721bc9c5d0526f9ad1f42ddb">Message</a>
 </li>
 <li>toStr()
 : <a class="el" href="classhive_1_1json_1_1_value.html#afb4cd05a1ebcd90f4f30b575020454c1">Value</a>
@@ -173,8 +180,8 @@ $(document).ready(function(){initNavTree('functions_0x74.html','');});
 : <a class="el" href="classcloud6_1_1_equipment.html#a0b86e44425dbe3c9d866aa273f87828a">Equipment</a>
 </li>
 <li>Type
-: <a class="el" href="classxbee_1_1_frame.html#a1d1cfd8ffb84e947f82999c682b666a7">Frame</a>
-, <a class="el" href="classhive_1_1json_1_1_value.html#a1d1cfd8ffb84e947f82999c682b666a7">Value</a>
+: <a class="el" href="classhive_1_1json_1_1_value.html#a1d1cfd8ffb84e947f82999c682b666a7">Value</a>
+, <a class="el" href="classxbee_1_1_frame.html#a1d1cfd8ffb84e947f82999c682b666a7">Frame</a>
 </li>
 <li>TYPE_ARRAY
 : <a class="el" href="classhive_1_1json_1_1_value.html#a1d1cfd8ffb84e947f82999c682b666a7ad189c0a53681ec74eeea1f56d08d741f">Value</a>
@@ -203,7 +210,7 @@ $(document).ready(function(){initNavTree('functions_0x74.html','');});
 <!-- start footer part -->
 <div id="nav-path" class="navpath"><!-- id is needed for treeview function! -->
   <ul>
-    <li class="footer">Generated on Fri Dec 28 2012 16:00:19 for DeviceHive C++ Framework by
+    <li class="footer">Generated on Thu Jan 24 2013 12:25:54 for DeviceHive C++ Framework by
     <a href="http://www.doxygen.org/index.html">
     <img class="footer" src="doxygen.png" alt="doxygen"/></a> 1.8.2 </li>
   </ul>

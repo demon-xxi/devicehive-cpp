@@ -14,5 +14,6 @@ var classsimple__dev_1_1_application =
     [ "onUpdateSensors", "classsimple__dev_1_1_application.html#a3df8ff89f898f3017c0bc0cdc2bc9adb", null ],
     [ "resetAllLedControls", "classsimple__dev_1_1_application.html#a801636c0f5b6e62d4ecbc00aebe386bc", null ],
     [ "m_updateTimer", "classsimple__dev_1_1_application.html#aee4b7a95d4f0ac42b435a12e052c5e61", null ],
-    [ "m_device", "classsimple__dev_1_1_application.html#a395e5fd7a7935bad58abbea84dbd9f15", null ]
+    [ "m_device", "classsimple__dev_1_1_application.html#a395e5fd7a7935bad58abbea84dbd9f15", null ],
+    [ "m_lastCommandTimestamp", "classsimple__dev_1_1_application.html#ab86685bc5488bd9b8a197849e4eeea87", null ]
 ];

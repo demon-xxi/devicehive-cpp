@@ -28,7 +28,7 @@
  <tr style="height: 56px;">
   <td style="padding-left: 0.5em;">
    <div id="projectname">DeviceHive C++ Framework
-   &#160;<span id="projectnumber">1.0</span>
+   &#160;<span id="projectnumber">1.1</span>
    </div>
    <div id="projectbrief">DeviceHive framework library for C++</div>
   </td>
@@ -195,8 +195,8 @@ Protected Attributes</h2></td></tr>
 </table>
 <a name="details" id="details"></a><h2 class="groupheader">Detailed Description</h2>
 <div class="textblock"><p>The "Tie" target. </p>
-<p>Sends log messages to the several targets.</p>
-<p>You can add many child targets using <a class="el" href="classhive_1_1log_1_1_target_1_1_tie.html#a1e7a2885ca99efe5cf7f0d570b2d2ba2" title="Add child target.">add()</a> method. There is no way to remove child target, it's only possible to remove all child targets using <a class="el" href="classhive_1_1log_1_1_target_1_1_tie.html#a9b7f62230f5b88b4f22edb2f4ac21fce" title="Remove all child targets.">clear()</a>.</p>
+<p>Sends log messages to the several child targets.</p>
+<p>You could add many child targets using <a class="el" href="classhive_1_1log_1_1_target_1_1_tie.html#a1e7a2885ca99efe5cf7f0d570b2d2ba2" title="Add child target.">add()</a> method. There is no way to remove a child target, it's only possible to remove all child targets using <a class="el" href="classhive_1_1log_1_1_target_1_1_tie.html#a9b7f62230f5b88b4f22edb2f4ac21fce" title="Remove all child targets.">clear()</a>.</p>
 <p>The <a class="el" href="classhive_1_1log_1_1_target_1_1_tie.html#a1e7a2885ca99efe5cf7f0d570b2d2ba2" title="Add child target.">add()</a> method returns self reference so you can combine mutiple inserts into one line:</p>
 <div class="fragment"><div class="line"><a class="code" href="classhive_1_1log_1_1_target_1_1_tie.html#a141bec4485a7e7ccc7ba043bc81615d0" title="The shared pointer type.">hive::log::Target::Tie::SharedPtr</a> tie = <a class="code" href="classhive_1_1log_1_1_target.html#a6d18b5cb9afd8313c52008d6c63c79df" title="The factory method.">hive::log::Target::Tie::create</a>();</div>
 <div class="line">tie-&gt;add(t1).add(t2).add(t3).add(t4);</div>
@@ -290,6 +290,7 @@ Protected Attributes</h2></td></tr>
 </div><div class="memdoc">
 
 <p>The default constructor. </p>
+<p>No any child targets. </p>
 
 </div>
 </div>
@@ -339,7 +340,7 @@ Protected Attributes</h2></td></tr>
 </div><div class="memdoc">
 
 <p>The factory method. </p>
-<p>If you need more than four child targets use <a class="el" href="classhive_1_1log_1_1_target_1_1_tie.html#a1e7a2885ca99efe5cf7f0d570b2d2ba2" title="Add child target.">add()</a> method.</p>
+<p>If you need more than four child targets, use <a class="el" href="classhive_1_1log_1_1_target_1_1_tie.html#a1e7a2885ca99efe5cf7f0d570b2d2ba2" title="Add child target.">add()</a> method instead.</p>
 <dl class="params"><dt>Parameters</dt><dd>
   <table class="params">
     <tr><td class="paramdir">[in]</td><td class="paramname">a</td><td>The first child target. May be NULL. </td></tr>
@@ -382,7 +383,7 @@ Protected Attributes</h2></td></tr>
   </table>
   </dd>
 </dl>
- </p>
+ Sends the log message to the all child targets. </p>
 
 <p>Reimplemented from <a class="el" href="classhive_1_1log_1_1_target.html#aa9fdf865f5e7cd98d827465f5062ba3a">Target</a>.</p>
 
@@ -490,7 +491,7 @@ Protected Attributes</h2></td></tr>
 <div id="nav-path" class="navpath"><!-- id is needed for treeview function! -->
   <ul>
     <li class="navelem"><a class="el" href="namespacehive.html">hive</a></li><li class="navelem"><a class="el" href="namespacehive_1_1log.html">log</a></li><li class="navelem"><a class="el" href="classhive_1_1log_1_1_target.html">Target</a></li><li class="navelem"><a class="el" href="classhive_1_1log_1_1_target_1_1_tie.html">Tie</a></li>
-    <li class="footer">Generated on Fri Dec 28 2012 16:00:18 for DeviceHive C++ Framework by
+    <li class="footer">Generated on Thu Jan 24 2013 12:25:52 for DeviceHive C++ Framework by
     <a href="http://www.doxygen.org/index.html">
     <img class="footer" src="doxygen.png" alt="doxygen"/></a> 1.8.2 </li>
   </ul>
