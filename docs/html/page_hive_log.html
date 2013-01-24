@@ -28,7 +28,7 @@
  <tr style="height: 56px;">
   <td style="padding-left: 0.5em;">
    <div id="projectname">DeviceHive C++ Framework
-   &#160;<span id="projectnumber">1.0</span>
+   &#160;<span id="projectnumber">1.1</span>
    </div>
    <div id="projectbrief">DeviceHive framework library for C++</div>
   </td>
@@ -123,12 +123,12 @@ $(document).ready(function(){initNavTree('page_hive_log.html','');});
 <p>The log target is an endpoint for all log messages. <a class="el" href="classhive_1_1log_1_1_target.html" title="The log target.">hive::log::Target</a> is the base class of all log targets. It also works like a <b>NULL</b> target - all messages just disappear.</p>
 <p>There are a few standard targets:</p>
 <ul>
-<li><a class="el" href="classhive_1_1log_1_1_target_1_1_stream.html" title="The &quot;Stream&quot; target.">hive::log::Target::Stream</a> sends log messages to the external stream like <code>std::cerr</code>.</li>
-<li><a class="el" href="classhive_1_1log_1_1_target_1_1_file.html" title="The &quot;File&quot; target.">hive::log::Target::File</a> sends log messages to the text file.</li>
-<li><a class="el" href="classhive_1_1log_1_1_target_1_1_tie.html" title="The &quot;Tie&quot; target.">hive::log::Target::Tie</a> sends log messages to the several child targets.</li>
+<li><a class="el" href="classhive_1_1log_1_1_target_1_1_stream.html" title="The &quot;Stream&quot; target.">hive::log::Target::Stream</a> sends log messages to an external stream like <code>std::cerr</code>.</li>
+<li><a class="el" href="classhive_1_1log_1_1_target_1_1_file.html" title="The &quot;File&quot; target.">hive::log::Target::File</a> sends log messages to a text file.</li>
+<li><a class="el" href="classhive_1_1log_1_1_target_1_1_tie.html" title="The &quot;Tie&quot; target.">hive::log::Target::Tie</a> sends log messages to several child targets.</li>
 </ul>
 <p>It is easy to create new log target by overriding <a class="el" href="classhive_1_1log_1_1_target.html#aa9fdf865f5e7cd98d827465f5062ba3a" title="Send log message to the target.">hive::log::Target::send()</a> virtual method.</p>
-<p>Each target may be binded with custom message format <a class="el" href="classhive_1_1log_1_1_target.html#ae61096d6161686278d43cfd2c07cc401" title="Set message format.">hive::log::Target::setFormat()</a> which will be used for all log messages.</p>
+<p>Each target may be binded with custom message format through <a class="el" href="classhive_1_1log_1_1_target.html#ae61096d6161686278d43cfd2c07cc401" title="Set message format.">hive::log::Target::setFormat()</a> which will be used for all log messages written to this target.</p>
 <p>It is possible to filter log messages by <a class="el" href="classhive_1_1log_1_1_target.html#a8148ad7504a10894ebd1628dfba5d5b5" title="Set the minimum level.">hive::log::Target::setMinimumLevel()</a>. All messages with logging level less than that limit will disappear (i.e. won't be written). Note, for <a class="el" href="classhive_1_1log_1_1_target_1_1_tie.html" title="The &quot;Tie&quot; target.">hive::log::Target::Tie</a> instances it's possible to specify minimum logging level for each child target individually.</p>
 <h2>Formats</h2>
 <p>How the log messages are written to the target is controlled by a <a class="el" href="classhive_1_1log_1_1_format.html" title="The log message format.">hive::log::Format</a> class instance. This instance is bound to the corresponding log target via <a class="el" href="classhive_1_1log_1_1_target.html#ae61096d6161686278d43cfd2c07cc401" title="Set message format.">hive::log::Target::setFormat()</a> method.</p>
@@ -145,7 +145,7 @@ $(document).ready(function(){initNavTree('page_hive_log.html','');});
 <p>It's very easy to create logger instances, just provide the custom name:</p>
 <div class="fragment"><div class="line"><a class="code" href="classhive_1_1log_1_1_logger.html" title="The logger.">hive::log::Logger</a> a(<span class="stringliteral">&quot;/app/test/A&quot;</span>);</div>
 <div class="line"><a class="code" href="classhive_1_1log_1_1_logger.html" title="The logger.">hive::log::Logger</a> b(<span class="stringliteral">&quot;/app/test/B&quot;</span>);</div>
-</div><!-- fragment --><p>All loggers are organized in tree hierarchy (name based with '/' separator). The root of hierarhy is special <a class="el" href="classhive_1_1log_1_1_logger.html#aa288e1d280a97ee13840fa5b9d08f775" title="Get the root logger.">hive::log::Logger::root()</a> logger instance which is also available via empty name. For example above the loggerhiearachy will be:</p>
+</div><!-- fragment --><p>All loggers are organized in tree hierarchy (name based with '/' separator). The root of hierarhy is special <a class="el" href="classhive_1_1log_1_1_logger.html#aa288e1d280a97ee13840fa5b9d08f775" title="Get the root logger.">hive::log::Logger::root()</a> logger instance which is also available via empty name. For the example above the logger hiearachy will be:</p>
 <ul>
 <li>the root logger <a class="el" href="classhive_1_1log_1_1_logger.html#aa288e1d280a97ee13840fa5b9d08f775" title="Get the root logger.">hive::log::Logger::root()</a><ul>
 <li><code>"app"</code><ul>
@@ -159,13 +159,13 @@ $(document).ready(function(){initNavTree('page_hive_log.html','');});
 </ul>
 </li>
 </ul>
-<p>All loggers except for <a class="el" href="classhive_1_1log_1_1_logger.html#aa288e1d280a97ee13840fa5b9d08f775" title="Get the root logger.">hive::log::Logger::root()</a> have the <a class="el" href="namespacehive_1_1log.html#a221b779e6bb7b8d40677d7642bfefac5a49630a83f6bfbe2a60b0895443bef9c2" title="The same as parent.">hive::log::LEVEL_AS_PARENT</a> logging level by default. While logging this level is checked first, then the target minimum logging level. </p>
+<p>All loggers except for <a class="el" href="classhive_1_1log_1_1_logger.html#aa288e1d280a97ee13840fa5b9d08f775" title="Get the root logger.">hive::log::Logger::root()</a> have the <a class="el" href="namespacehive_1_1log.html#a221b779e6bb7b8d40677d7642bfefac5a49630a83f6bfbe2a60b0895443bef9c2" title="The same as parent&#39;s.">hive::log::LEVEL_AS_PARENT</a> logging level by default. While logging this level is checked first, then the target minimum logging level. </p>
 </div></div><!-- contents -->
 </div><!-- doc-content -->
 <!-- start footer part -->
 <div id="nav-path" class="navpath"><!-- id is needed for treeview function! -->
   <ul>
-    <li class="footer">Generated on Fri Dec 28 2012 16:00:17 for DeviceHive C++ Framework by
+    <li class="footer">Generated on Thu Jan 24 2013 12:25:51 for DeviceHive C++ Framework by
     <a href="http://www.doxygen.org/index.html">
     <img class="footer" src="doxygen.png" alt="doxygen"/></a> 1.8.2 </li>
   </ul>

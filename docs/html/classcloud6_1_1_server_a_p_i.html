@@ -28,7 +28,7 @@
  <tr style="height: 56px;">
   <td style="padding-left: 0.5em;">
    <div id="projectname">DeviceHive C++ Framework
-   &#160;<span id="projectnumber">1.0</span>
+   &#160;<span id="projectnumber">1.1</span>
    </div>
    <div id="projectbrief">DeviceHive framework library for C++</div>
   </td>
@@ -165,6 +165,20 @@ Private Attributes</h2></td></tr>
 <tr class="separator:adae767175df3fe6d419765d973eeb3d5"><td class="memSeparator" colspan="2">&#160;</td></tr>
 </table><table class="memberdecls">
 <tr class="heading"><td colspan="2"><h2 class="groupheader"><a name="member-group"></a>
+Server Info</h2></td></tr>
+<tr class="memitem:ad0cb236afaa6c2e05e0fa7c35964b132"><td class="memItemLeft" align="right" valign="top">typedef boost::function2&lt; void, <br class="typebreak"/>
+boost::system::error_code, <br class="typebreak"/>
+<a class="el" href="classhive_1_1json_1_1_value.html">json::Value</a> const &amp; &gt;&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="classcloud6_1_1_server_a_p_i.html#ad0cb236afaa6c2e05e0fa7c35964b132">ServerInfoCallback</a></td></tr>
+<tr class="memdesc:ad0cb236afaa6c2e05e0fa7c35964b132"><td class="mdescLeft">&#160;</td><td class="mdescRight">The "server info" callback type.  <a href="#ad0cb236afaa6c2e05e0fa7c35964b132"></a><br/></td></tr>
+<tr class="separator:ad0cb236afaa6c2e05e0fa7c35964b132"><td class="memSeparator" colspan="2">&#160;</td></tr>
+<tr class="memitem:afb8ab114c0724b1eb81ae1f27ae571e0"><td class="memItemLeft" align="right" valign="top">void&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="classcloud6_1_1_server_a_p_i.html#afb8ab114c0724b1eb81ae1f27ae571e0">onGotServerInfo</a> (boost::system::error_code err, <a class="el" href="namespacehive_1_1http.html#a6f8a442db78286c5eebb574f73f2d42c">http::RequestPtr</a> request, <a class="el" href="namespacehive_1_1http.html#aa5643cb0f8392ad60cd7687f35b31ae4">http::ResponsePtr</a> response, <a class="el" href="classcloud6_1_1_server_a_p_i.html#ad0cb236afaa6c2e05e0fa7c35964b132">ServerInfoCallback</a> callback)</td></tr>
+<tr class="memdesc:afb8ab114c0724b1eb81ae1f27ae571e0"><td class="mdescLeft">&#160;</td><td class="mdescRight">The "server info" completion handler.  <a href="#afb8ab114c0724b1eb81ae1f27ae571e0"></a><br/></td></tr>
+<tr class="separator:afb8ab114c0724b1eb81ae1f27ae571e0"><td class="memSeparator" colspan="2">&#160;</td></tr>
+<tr class="memitem:a79c5aeeedc896fbe2103cff7c0e74a61"><td class="memItemLeft" align="right" valign="top">void&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="classcloud6_1_1_server_a_p_i.html#a79c5aeeedc896fbe2103cff7c0e74a61">asyncGetServerInfo</a> (<a class="el" href="classcloud6_1_1_server_a_p_i.html#ad0cb236afaa6c2e05e0fa7c35964b132">ServerInfoCallback</a> callback)</td></tr>
+<tr class="memdesc:a79c5aeeedc896fbe2103cff7c0e74a61"><td class="mdescLeft">&#160;</td><td class="mdescRight">Get the server info.  <a href="#a79c5aeeedc896fbe2103cff7c0e74a61"></a><br/></td></tr>
+<tr class="separator:a79c5aeeedc896fbe2103cff7c0e74a61"><td class="memSeparator" colspan="2">&#160;</td></tr>
+</table><table class="memberdecls">
+<tr class="heading"><td colspan="2"><h2 class="groupheader"><a name="member-group"></a>
 Device</h2></td></tr>
 <tr class="memitem:a6ba6ffdfb10127a95404b77c84091e65"><td class="memItemLeft" align="right" valign="top">typedef boost::function2&lt; void, <br class="typebreak"/>
 boost::system::error_code, <br class="typebreak"/>
@@ -174,9 +188,15 @@ boost::system::error_code, <br class="typebreak"/>
 <tr class="memitem:ab40cfdcfded1d9658a4be114e9c1cf23"><td class="memItemLeft" align="right" valign="top">void&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="classcloud6_1_1_server_a_p_i.html#ab40cfdcfded1d9658a4be114e9c1cf23">onRegisterDevice</a> (boost::system::error_code err, <a class="el" href="namespacehive_1_1http.html#a6f8a442db78286c5eebb574f73f2d42c">http::RequestPtr</a> request, <a class="el" href="namespacehive_1_1http.html#aa5643cb0f8392ad60cd7687f35b31ae4">http::ResponsePtr</a> response, <a class="el" href="classcloud6_1_1_device.html#ad526fe9745b7dc804a3b951b5def2d28">Device::SharedPtr</a> device, <a class="el" href="classcloud6_1_1_server_a_p_i.html#a6ba6ffdfb10127a95404b77c84091e65">RegisterDeviceCallback</a> callback)</td></tr>
 <tr class="memdesc:ab40cfdcfded1d9658a4be114e9c1cf23"><td class="mdescLeft">&#160;</td><td class="mdescRight">The "register device" completion handler.  <a href="#ab40cfdcfded1d9658a4be114e9c1cf23"></a><br/></td></tr>
 <tr class="separator:ab40cfdcfded1d9658a4be114e9c1cf23"><td class="memSeparator" colspan="2">&#160;</td></tr>
+<tr class="memitem:ac70f01c08387627c8119e08d980ed526"><td class="memItemLeft" align="right" valign="top">void&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="classcloud6_1_1_server_a_p_i.html#ac70f01c08387627c8119e08d980ed526">onUpdateDeviceData</a> (boost::system::error_code err, <a class="el" href="namespacehive_1_1http.html#a6f8a442db78286c5eebb574f73f2d42c">http::RequestPtr</a> request, <a class="el" href="namespacehive_1_1http.html#aa5643cb0f8392ad60cd7687f35b31ae4">http::ResponsePtr</a> response, <a class="el" href="classcloud6_1_1_device.html#ad526fe9745b7dc804a3b951b5def2d28">Device::SharedPtr</a> device, <a class="el" href="classcloud6_1_1_server_a_p_i.html#a6ba6ffdfb10127a95404b77c84091e65">RegisterDeviceCallback</a> callback)</td></tr>
+<tr class="memdesc:ac70f01c08387627c8119e08d980ed526"><td class="mdescLeft">&#160;</td><td class="mdescRight">The "update device data" completion handler.  <a href="#ac70f01c08387627c8119e08d980ed526"></a><br/></td></tr>
+<tr class="separator:ac70f01c08387627c8119e08d980ed526"><td class="memSeparator" colspan="2">&#160;</td></tr>
 <tr class="memitem:a709e279c515ba070442fb247a431a964"><td class="memItemLeft" align="right" valign="top">void&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="classcloud6_1_1_server_a_p_i.html#a709e279c515ba070442fb247a431a964">asyncRegisterDevice</a> (<a class="el" href="classcloud6_1_1_device.html#ad526fe9745b7dc804a3b951b5def2d28">Device::SharedPtr</a> device, <a class="el" href="classcloud6_1_1_server_a_p_i.html#a6ba6ffdfb10127a95404b77c84091e65">RegisterDeviceCallback</a> callback)</td></tr>
 <tr class="memdesc:a709e279c515ba070442fb247a431a964"><td class="mdescLeft">&#160;</td><td class="mdescRight">Register device on the server.  <a href="#a709e279c515ba070442fb247a431a964"></a><br/></td></tr>
 <tr class="separator:a709e279c515ba070442fb247a431a964"><td class="memSeparator" colspan="2">&#160;</td></tr>
+<tr class="memitem:af020cd3b0d9acc425a5758ff1bcef78f"><td class="memItemLeft" align="right" valign="top">void&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="classcloud6_1_1_server_a_p_i.html#af020cd3b0d9acc425a5758ff1bcef78f">asyncUpdateDeviceData</a> (<a class="el" href="classcloud6_1_1_device.html#ad526fe9745b7dc804a3b951b5def2d28">Device::SharedPtr</a> device, <a class="el" href="classcloud6_1_1_server_a_p_i.html#a6ba6ffdfb10127a95404b77c84091e65">RegisterDeviceCallback</a> callback)</td></tr>
+<tr class="memdesc:af020cd3b0d9acc425a5758ff1bcef78f"><td class="mdescLeft">&#160;</td><td class="mdescRight">Update device data on the server.  <a href="#af020cd3b0d9acc425a5758ff1bcef78f"></a><br/></td></tr>
+<tr class="separator:af020cd3b0d9acc425a5758ff1bcef78f"><td class="memSeparator" colspan="2">&#160;</td></tr>
 </table><table class="memberdecls">
 <tr class="heading"><td colspan="2"><h2 class="groupheader"><a name="member-group"></a>
 Device command</h2></td></tr>
@@ -192,9 +212,9 @@ boost::system::error_code, <br class="typebreak"/>
 <tr class="memitem:a56623cceabb9b935d991006804e1efea"><td class="memItemLeft" align="right" valign="top">void&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="classcloud6_1_1_server_a_p_i.html#a56623cceabb9b935d991006804e1efea">onSendCommandResult</a> (boost::system::error_code err, <a class="el" href="namespacehive_1_1http.html#a6f8a442db78286c5eebb574f73f2d42c">http::RequestPtr</a> request, <a class="el" href="namespacehive_1_1http.html#aa5643cb0f8392ad60cd7687f35b31ae4">http::ResponsePtr</a> response)</td></tr>
 <tr class="memdesc:a56623cceabb9b935d991006804e1efea"><td class="mdescLeft">&#160;</td><td class="mdescRight">The "send command result" completion handler.  <a href="#a56623cceabb9b935d991006804e1efea"></a><br/></td></tr>
 <tr class="separator:a56623cceabb9b935d991006804e1efea"><td class="memSeparator" colspan="2">&#160;</td></tr>
-<tr class="memitem:a513fe366ff61b9c0c250b17bee0a0817"><td class="memItemLeft" align="right" valign="top">void&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="classcloud6_1_1_server_a_p_i.html#a513fe366ff61b9c0c250b17bee0a0817">asyncPollCommands</a> (<a class="el" href="classcloud6_1_1_device.html#ad526fe9745b7dc804a3b951b5def2d28">Device::SharedPtr</a> device, <a class="el" href="classcloud6_1_1_server_a_p_i.html#acef29a9a974459043f3466746d959fd7">PollCommandsCallback</a> callback)</td></tr>
-<tr class="memdesc:a513fe366ff61b9c0c250b17bee0a0817"><td class="mdescLeft">&#160;</td><td class="mdescRight">Poll commands from the server.  <a href="#a513fe366ff61b9c0c250b17bee0a0817"></a><br/></td></tr>
-<tr class="separator:a513fe366ff61b9c0c250b17bee0a0817"><td class="memSeparator" colspan="2">&#160;</td></tr>
+<tr class="memitem:a1481a6ef90024ee9d9ecd71788df51a6"><td class="memItemLeft" align="right" valign="top">void&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="classcloud6_1_1_server_a_p_i.html#a1481a6ef90024ee9d9ecd71788df51a6">asyncPollCommands</a> (<a class="el" href="classcloud6_1_1_device.html#ad526fe9745b7dc804a3b951b5def2d28">Device::SharedPtr</a> device, <a class="el" href="namespacehive.html#afbeda3fd1bdc8c37d01bdf9f5c8274ff">String</a> const &amp;timestamp, <a class="el" href="classcloud6_1_1_server_a_p_i.html#acef29a9a974459043f3466746d959fd7">PollCommandsCallback</a> callback)</td></tr>
+<tr class="memdesc:a1481a6ef90024ee9d9ecd71788df51a6"><td class="mdescLeft">&#160;</td><td class="mdescRight">Poll commands from the server.  <a href="#a1481a6ef90024ee9d9ecd71788df51a6"></a><br/></td></tr>
+<tr class="separator:a1481a6ef90024ee9d9ecd71788df51a6"><td class="memSeparator" colspan="2">&#160;</td></tr>
 <tr class="memitem:a54f8e2ac1ca37d98fcd41c41f6f55194"><td class="memItemLeft" align="right" valign="top">void&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="classcloud6_1_1_server_a_p_i.html#a54f8e2ac1ca37d98fcd41c41f6f55194">asyncSendCommandResult</a> (<a class="el" href="classcloud6_1_1_device.html#ad526fe9745b7dc804a3b951b5def2d28">Device::SharedPtr</a> device, <a class="el" href="classcloud6_1_1_command.html">Command</a> const &amp;cmd)</td></tr>
 <tr class="memdesc:a54f8e2ac1ca37d98fcd41c41f6f55194"><td class="mdescLeft">&#160;</td><td class="mdescRight">Send command result to the server.  <a href="#a54f8e2ac1ca37d98fcd41c41f6f55194"></a><br/></td></tr>
 <tr class="separator:a54f8e2ac1ca37d98fcd41c41f6f55194"><td class="memSeparator" colspan="2">&#160;</td></tr>
@@ -214,7 +234,7 @@ Device notification</h2></td></tr>
 <p>There are a lot of API wrapper methods:</p>
 <ul>
 <li><a class="el" href="classcloud6_1_1_server_a_p_i.html#a709e279c515ba070442fb247a431a964" title="Register device on the server.">asyncRegisterDevice()</a></li>
-<li><a class="el" href="classcloud6_1_1_server_a_p_i.html#a513fe366ff61b9c0c250b17bee0a0817" title="Poll commands from the server.">asyncPollCommands()</a></li>
+<li><a class="el" href="classcloud6_1_1_server_a_p_i.html#a1481a6ef90024ee9d9ecd71788df51a6" title="Poll commands from the server.">asyncPollCommands()</a></li>
 <li><a class="el" href="classcloud6_1_1_server_a_p_i.html#a54f8e2ac1ca37d98fcd41c41f6f55194" title="Send command result to the server.">asyncSendCommandResult()</a></li>
 <li><a class="el" href="classcloud6_1_1_server_a_p_i.html#a99b0e2cf290c752ad98f0869ff36abc5" title="Send notification to the server.">asyncSendNotification()</a></li>
 </ul>
@@ -253,6 +273,20 @@ Device notification</h2></td></tr>
 </div><div class="memdoc">
 
 <p>The shared pointer type. </p>
+
+</div>
+</div>
+<a class="anchor" id="ad0cb236afaa6c2e05e0fa7c35964b132"></a>
+<div class="memitem">
+<div class="memproto">
+      <table class="memname">
+        <tr>
+          <td class="memname">typedef boost::function2&lt;void, boost::system::error_code, <a class="el" href="classhive_1_1json_1_1_value.html">json::Value</a> const&amp;&gt; <a class="el" href="classcloud6_1_1_server_a_p_i.html#ad0cb236afaa6c2e05e0fa7c35964b132">ServerInfoCallback</a></td>
+        </tr>
+      </table>
+</div><div class="memdoc">
+
+<p>The "server info" callback type. </p>
 
 </div>
 </div>
@@ -373,6 +407,95 @@ Device notification</h2></td></tr>
 
 </div>
 </div>
+<a class="anchor" id="a79c5aeeedc896fbe2103cff7c0e74a61"></a>
+<div class="memitem">
+<div class="memproto">
+<table class="mlabels">
+  <tr>
+  <td class="mlabels-left">
+      <table class="memname">
+        <tr>
+          <td class="memname">void asyncGetServerInfo </td>
+          <td>(</td>
+          <td class="paramtype"><a class="el" href="classcloud6_1_1_server_a_p_i.html#ad0cb236afaa6c2e05e0fa7c35964b132">ServerInfoCallback</a>&#160;</td>
+          <td class="paramname"><em>callback</em></td><td>)</td>
+          <td></td>
+        </tr>
+      </table>
+  </td>
+  <td class="mlabels-right">
+<span class="mlabels"><span class="mlabel">inline</span></span>  </td>
+  </tr>
+</table>
+</div><div class="memdoc">
+
+<p>Get the server info. </p>
+<dl class="params"><dt>Parameters</dt><dd>
+  <table class="params">
+    <tr><td class="paramdir">[in]</td><td class="paramname">callback</td><td>The callback functor. </td></tr>
+  </table>
+  </dd>
+</dl>
+
+</div>
+</div>
+<a class="anchor" id="afb8ab114c0724b1eb81ae1f27ae571e0"></a>
+<div class="memitem">
+<div class="memproto">
+<table class="mlabels">
+  <tr>
+  <td class="mlabels-left">
+      <table class="memname">
+        <tr>
+          <td class="memname">void onGotServerInfo </td>
+          <td>(</td>
+          <td class="paramtype">boost::system::error_code&#160;</td>
+          <td class="paramname"><em>err</em>, </td>
+        </tr>
+        <tr>
+          <td class="paramkey"></td>
+          <td></td>
+          <td class="paramtype"><a class="el" href="namespacehive_1_1http.html#a6f8a442db78286c5eebb574f73f2d42c">http::RequestPtr</a>&#160;</td>
+          <td class="paramname"><em>request</em>, </td>
+        </tr>
+        <tr>
+          <td class="paramkey"></td>
+          <td></td>
+          <td class="paramtype"><a class="el" href="namespacehive_1_1http.html#aa5643cb0f8392ad60cd7687f35b31ae4">http::ResponsePtr</a>&#160;</td>
+          <td class="paramname"><em>response</em>, </td>
+        </tr>
+        <tr>
+          <td class="paramkey"></td>
+          <td></td>
+          <td class="paramtype"><a class="el" href="classcloud6_1_1_server_a_p_i.html#ad0cb236afaa6c2e05e0fa7c35964b132">ServerInfoCallback</a>&#160;</td>
+          <td class="paramname"><em>callback</em>&#160;</td>
+        </tr>
+        <tr>
+          <td></td>
+          <td>)</td>
+          <td></td><td></td>
+        </tr>
+      </table>
+  </td>
+  <td class="mlabels-right">
+<span class="mlabels"><span class="mlabel">inline</span><span class="mlabel">private</span></span>  </td>
+  </tr>
+</table>
+</div><div class="memdoc">
+
+<p>The "server info" completion handler. </p>
+<dl class="params"><dt>Parameters</dt><dd>
+  <table class="params">
+    <tr><td class="paramdir">[in]</td><td class="paramname">err</td><td>The error code. </td></tr>
+    <tr><td class="paramdir">[in]</td><td class="paramname">request</td><td>The HTTP request. </td></tr>
+    <tr><td class="paramdir">[in]</td><td class="paramname">response</td><td>The HTTP response. </td></tr>
+    <tr><td class="paramdir">[in]</td><td class="paramname">callback</td><td>The callback functor. </td></tr>
+  </table>
+  </dd>
+</dl>
+
+</div>
+</div>
 <a class="anchor" id="a709e279c515ba070442fb247a431a964"></a>
 <div class="memitem">
 <div class="memproto">
@@ -409,6 +532,49 @@ Device notification</h2></td></tr>
 <dl class="params"><dt>Parameters</dt><dd>
   <table class="params">
     <tr><td class="paramdir">[in]</td><td class="paramname">device</td><td>The device to register. </td></tr>
+    <tr><td class="paramdir">[in]</td><td class="paramname">callback</td><td>The callback functor. </td></tr>
+  </table>
+  </dd>
+</dl>
+
+</div>
+</div>
+<a class="anchor" id="af020cd3b0d9acc425a5758ff1bcef78f"></a>
+<div class="memitem">
+<div class="memproto">
+<table class="mlabels">
+  <tr>
+  <td class="mlabels-left">
+      <table class="memname">
+        <tr>
+          <td class="memname">void asyncUpdateDeviceData </td>
+          <td>(</td>
+          <td class="paramtype"><a class="el" href="classcloud6_1_1_device.html#ad526fe9745b7dc804a3b951b5def2d28">Device::SharedPtr</a>&#160;</td>
+          <td class="paramname"><em>device</em>, </td>
+        </tr>
+        <tr>
+          <td class="paramkey"></td>
+          <td></td>
+          <td class="paramtype"><a class="el" href="classcloud6_1_1_server_a_p_i.html#a6ba6ffdfb10127a95404b77c84091e65">RegisterDeviceCallback</a>&#160;</td>
+          <td class="paramname"><em>callback</em>&#160;</td>
+        </tr>
+        <tr>
+          <td></td>
+          <td>)</td>
+          <td></td><td></td>
+        </tr>
+      </table>
+  </td>
+  <td class="mlabels-right">
+<span class="mlabels"><span class="mlabel">inline</span></span>  </td>
+  </tr>
+</table>
+</div><div class="memdoc">
+
+<p>Update device data on the server. </p>
+<dl class="params"><dt>Parameters</dt><dd>
+  <table class="params">
+    <tr><td class="paramdir">[in]</td><td class="paramname">device</td><td>The device to update. </td></tr>
     <tr><td class="paramdir">[in]</td><td class="paramname">callback</td><td>The callback functor. </td></tr>
   </table>
   </dd>
@@ -480,7 +646,71 @@ Device notification</h2></td></tr>
 
 </div>
 </div>
-<a class="anchor" id="a513fe366ff61b9c0c250b17bee0a0817"></a>
+<a class="anchor" id="ac70f01c08387627c8119e08d980ed526"></a>
+<div class="memitem">
+<div class="memproto">
+<table class="mlabels">
+  <tr>
+  <td class="mlabels-left">
+      <table class="memname">
+        <tr>
+          <td class="memname">void onUpdateDeviceData </td>
+          <td>(</td>
+          <td class="paramtype">boost::system::error_code&#160;</td>
+          <td class="paramname"><em>err</em>, </td>
+        </tr>
+        <tr>
+          <td class="paramkey"></td>
+          <td></td>
+          <td class="paramtype"><a class="el" href="namespacehive_1_1http.html#a6f8a442db78286c5eebb574f73f2d42c">http::RequestPtr</a>&#160;</td>
+          <td class="paramname"><em>request</em>, </td>
+        </tr>
+        <tr>
+          <td class="paramkey"></td>
+          <td></td>
+          <td class="paramtype"><a class="el" href="namespacehive_1_1http.html#aa5643cb0f8392ad60cd7687f35b31ae4">http::ResponsePtr</a>&#160;</td>
+          <td class="paramname"><em>response</em>, </td>
+        </tr>
+        <tr>
+          <td class="paramkey"></td>
+          <td></td>
+          <td class="paramtype"><a class="el" href="classcloud6_1_1_device.html#ad526fe9745b7dc804a3b951b5def2d28">Device::SharedPtr</a>&#160;</td>
+          <td class="paramname"><em>device</em>, </td>
+        </tr>
+        <tr>
+          <td class="paramkey"></td>
+          <td></td>
+          <td class="paramtype"><a class="el" href="classcloud6_1_1_server_a_p_i.html#a6ba6ffdfb10127a95404b77c84091e65">RegisterDeviceCallback</a>&#160;</td>
+          <td class="paramname"><em>callback</em>&#160;</td>
+        </tr>
+        <tr>
+          <td></td>
+          <td>)</td>
+          <td></td><td></td>
+        </tr>
+      </table>
+  </td>
+  <td class="mlabels-right">
+<span class="mlabels"><span class="mlabel">inline</span><span class="mlabel">private</span></span>  </td>
+  </tr>
+</table>
+</div><div class="memdoc">
+
+<p>The "update device data" completion handler. </p>
+<dl class="params"><dt>Parameters</dt><dd>
+  <table class="params">
+    <tr><td class="paramdir">[in]</td><td class="paramname">err</td><td>The error code. </td></tr>
+    <tr><td class="paramdir">[in]</td><td class="paramname">request</td><td>The HTTP request. </td></tr>
+    <tr><td class="paramdir">[in]</td><td class="paramname">response</td><td>The HTTP response. </td></tr>
+    <tr><td class="paramdir">[in]</td><td class="paramname">device</td><td>The device registered. </td></tr>
+    <tr><td class="paramdir">[in]</td><td class="paramname">callback</td><td>The callback functor. </td></tr>
+  </table>
+  </dd>
+</dl>
+
+</div>
+</div>
+<a class="anchor" id="a1481a6ef90024ee9d9ecd71788df51a6"></a>
 <div class="memitem">
 <div class="memproto">
 <table class="mlabels">
@@ -492,6 +722,12 @@ Device notification</h2></td></tr>
           <td>(</td>
           <td class="paramtype"><a class="el" href="classcloud6_1_1_device.html#ad526fe9745b7dc804a3b951b5def2d28">Device::SharedPtr</a>&#160;</td>
           <td class="paramname"><em>device</em>, </td>
+        </tr>
+        <tr>
+          <td class="paramkey"></td>
+          <td></td>
+          <td class="paramtype"><a class="el" href="namespacehive.html#afbeda3fd1bdc8c37d01bdf9f5c8274ff">String</a> const &amp;&#160;</td>
+          <td class="paramname"><em>timestamp</em>, </td>
         </tr>
         <tr>
           <td class="paramkey"></td>
@@ -516,6 +752,7 @@ Device notification</h2></td></tr>
 <dl class="params"><dt>Parameters</dt><dd>
   <table class="params">
     <tr><td class="paramdir">[in]</td><td class="paramname">device</td><td>The device to poll commands for. </td></tr>
+    <tr><td class="paramdir">[in]</td><td class="paramname">timestamp</td><td>The timestamp of the last received command. Empty for server's "now". </td></tr>
     <tr><td class="paramdir">[in]</td><td class="paramname">callback</td><td>The callback functor. </td></tr>
   </table>
   </dd>
@@ -940,7 +1177,7 @@ Device notification</h2></td></tr>
 <div id="nav-path" class="navpath"><!-- id is needed for treeview function! -->
   <ul>
     <li class="navelem"><a class="el" href="namespacecloud6.html">cloud6</a></li><li class="navelem"><a class="el" href="classcloud6_1_1_server_a_p_i.html">ServerAPI</a></li>
-    <li class="footer">Generated on Fri Dec 28 2012 16:00:17 for DeviceHive C++ Framework by
+    <li class="footer">Generated on Thu Jan 24 2013 12:25:51 for DeviceHive C++ Framework by
     <a href="http://www.doxygen.org/index.html">
     <img class="footer" src="doxygen.png" alt="doxygen"/></a> 1.8.2 </li>
   </ul>

@@ -28,7 +28,7 @@
  <tr style="height: 56px;">
   <td style="padding-left: 0.5em;">
    <div id="projectname">DeviceHive C++ Framework
-   &#160;<span id="projectnumber">1.0</span>
+   &#160;<span id="projectnumber">1.1</span>
    </div>
    <div id="projectbrief">DeviceHive framework library for C++</div>
   </td>
@@ -263,6 +263,7 @@ $(document).ready(function(){initNavTree('examples_2zigbee_gw_8hpp-example.html'
 <div class="line"><span class="comment"></span></div>
 <div class="line">        <a class="code" href="namespacecloud6.html#a5cfc435a6fbc96b4c71912911798e0d4" title="The device shared pointer type.">cloud6::DevicePtr</a> device; <span class="comment">///&lt; @brief The corresponding device.</span></div>
 <div class="line"><span class="comment"></span>        <span class="keywordtype">bool</span> deviceRegistered;    <span class="comment">///&lt; @brief The &quot;registered&quot; flag.</span></div>
+<div class="line"><span class="comment"></span>        <a class="code" href="namespacehive.html#afbeda3fd1bdc8c37d01bdf9f5c8274ff" title="The string.">String</a> m_lastCommandTimestamp; <span class="comment">///&lt; @brief The timestamp of the last received command.</span></div>
 <div class="line"><span class="comment"></span>        std::vector&lt;cloud6::Notification&gt; delayedNotifications; <span class="comment">///&lt; @brief The list of delayed notification.</span></div>
 <div class="line"><span class="comment"></span>        <a name="_a7"></a><a class="code" href="classgateway_1_1_engine.html" title="The gateway engine.">gateway::Engine</a> gw; <span class="comment">///&lt; @brief The gateway engine.</span></div>
 <div class="line"><span class="comment"></span><span class="comment"></span></div>
@@ -332,7 +333,7 @@ $(document).ready(function(){initNavTree('examples_2zigbee_gw_8hpp-example.html'
 <div class="line">            {</div>
 <div class="line">                zdev-&gt;deviceRegistered = <span class="keyword">true</span>;</div>
 <div class="line">                sendDelayedNotifications(zdev);</div>
-<div class="line">                asyncPollCommands(device);</div>
+<div class="line">                asyncPollCommands(device, zdev-&gt;m_lastCommandTimestamp);</div>
 <div class="line">            }</div>
 <div class="line">            <span class="keywordflow">else</span></div>
 <div class="line">                <a name="a8"></a><a class="code" href="log_8hpp.html#a36cc4f1f3e9031a86681c365f8ee6da5" title="Send a log message at ERROR level.">HIVELOG_ERROR</a>(m_log, <span class="stringliteral">&quot;unknown device&quot;</span>);</div>
@@ -353,6 +354,7 @@ $(document).ready(function(){initNavTree('examples_2zigbee_gw_8hpp-example.html'
 <div class="line">                <span class="keywordflow">for</span> (Iterator i = commands.begin(); i != commands.end(); ++i)</div>
 <div class="line">                {</div>
 <div class="line">                    <a name="_a9"></a><a class="code" href="classcloud6_1_1_command.html" title="The command.">cloud6::Command</a> cmd = *i; <span class="comment">// copy to modify</span></div>
+<div class="line">                    zdev-&gt;m_lastCommandTimestamp = cmd.<a name="a10"></a><a class="code" href="classcloud6_1_1_command.html#adba8f7570c35c016471c23c6ffe1d054" title="The command timestamp in UTC format.">timestamp</a>;</div>
 <div class="line">                    <span class="keywordtype">bool</span> processed = <span class="keyword">true</span>;</div>
 <div class="line"></div>
 <div class="line">                    <span class="keywordflow">try</span></div>
@@ -364,15 +366,15 @@ $(document).ready(function(){initNavTree('examples_2zigbee_gw_8hpp-example.html'
 <div class="line">                        <a class="code" href="log_8hpp.html#a36cc4f1f3e9031a86681c365f8ee6da5" title="Send a log message at ERROR level.">HIVELOG_ERROR</a>(m_log, <span class="stringliteral">&quot;handle command error: &quot;</span></div>
 <div class="line">                            &lt;&lt; ex.what());</div>
 <div class="line"></div>
-<div class="line">                        cmd.<a name="a10"></a><a class="code" href="classcloud6_1_1_command.html#a4e531c185af848083db0808335a78168" title="Command status.">status</a> = <span class="stringliteral">&quot;Failed&quot;</span>;</div>
-<div class="line">                        cmd.<a name="a11"></a><a class="code" href="classcloud6_1_1_command.html#ade3e4dd136fe976f4d00476ead564457" title="Command result.">result</a> = ex.what();</div>
+<div class="line">                        cmd.<a name="a11"></a><a class="code" href="classcloud6_1_1_command.html#a4e531c185af848083db0808335a78168" title="Command status.">status</a> = <span class="stringliteral">&quot;Failed&quot;</span>;</div>
+<div class="line">                        cmd.<a name="a12"></a><a class="code" href="classcloud6_1_1_command.html#ade3e4dd136fe976f4d00476ead564457" title="Command result.">result</a> = ex.what();</div>
 <div class="line">                    }</div>
 <div class="line"></div>
 <div class="line">                    <span class="keywordflow">if</span> (processed)</div>
 <div class="line">                        asyncUpdateCommand(device, cmd);</div>
 <div class="line">                }</div>
 <div class="line"></div>
-<div class="line">                asyncPollCommands(device); <span class="comment">// start poll again</span></div>
+<div class="line">                asyncPollCommands(device, zdev-&gt;m_lastCommandTimestamp); <span class="comment">// start poll again</span></div>
 <div class="line">            }</div>
 <div class="line">            <span class="keywordflow">else</span></div>
 <div class="line">                <a class="code" href="log_8hpp.html#a36cc4f1f3e9031a86681c365f8ee6da5" title="Send a log message at ERROR level.">HIVELOG_ERROR</a>(m_log, <span class="stringliteral">&quot;unknown device&quot;</span>);</div>
@@ -387,7 +389,7 @@ $(document).ready(function(){initNavTree('examples_2zigbee_gw_8hpp-example.html'
 <div class="line">    <span class="keywordtype">void</span> sendDelayedNotifications(ZDeviceSPtr zdev)</div>
 <div class="line">    {</div>
 <div class="line">        <span class="keyword">const</span> <span class="keywordtype">size_t</span> N = zdev-&gt;delayedNotifications.size();</div>
-<div class="line">        <a name="a12"></a><a class="code" href="log_8hpp.html#adce386f1611953d8e958a59dc76878f2" title="Send a log message at INFO level.">HIVELOG_INFO</a>(m_log, <span class="stringliteral">&quot;sending &quot;</span> &lt;&lt; N</div>
+<div class="line">        <a name="a13"></a><a class="code" href="log_8hpp.html#adce386f1611953d8e958a59dc76878f2" title="Send a log message at INFO level.">HIVELOG_INFO</a>(m_log, <span class="stringliteral">&quot;sending &quot;</span> &lt;&lt; N</div>
 <div class="line">            &lt;&lt; <span class="stringliteral">&quot; delayed notifications&quot;</span>);</div>
 <div class="line"></div>
 <div class="line">        <span class="keywordflow">for</span> (<span class="keywordtype">size_t</span> i = 0; i &lt; N; ++i)</div>
@@ -419,10 +421,10 @@ $(document).ready(function(){initNavTree('examples_2zigbee_gw_8hpp-example.html'
 <div class="line"><span class="comment">    /// @brief Send gateway registration request.</span></div>
 <div class="line"><span class="comment"></span>    <span class="keywordtype">void</span> sendGatewayRegistrationRequest()</div>
 <div class="line">    {</div>
-<div class="line">        <a name="_a13"></a><a class="code" href="classhive_1_1json_1_1_value.html" title="The JSON value.">json::Value</a> data;</div>
+<div class="line">        <a name="_a14"></a><a class="code" href="classhive_1_1json_1_1_value.html" title="The JSON value.">json::Value</a> data;</div>
 <div class="line">        data[<span class="stringliteral">&quot;data&quot;</span>] = <a class="code" href="classhive_1_1json_1_1_value.html" title="The JSON value.">json::Value</a>();</div>
 <div class="line"></div>
-<div class="line">        sendGatewayMessage(ZDeviceSPtr(), <a name="a14"></a><a class="code" href="namespacegateway.html#a91a5c9f7bb1a8c5152e0e25e56718621af22bd4afe7b3e07afe09ec81de99388f" title="The registration request.">gateway::INTENT_REGISTRATION_REQUEST</a>, data);</div>
+<div class="line">        sendGatewayMessage(ZDeviceSPtr(), <a name="a15"></a><a class="code" href="namespacegateway.html#a91a5c9f7bb1a8c5152e0e25e56718621af22bd4afe7b3e07afe09ec81de99388f" title="The registration request.">gateway::INTENT_REGISTRATION_REQUEST</a>, data);</div>
 <div class="line">    }</div>
 <div class="line"></div>
 <div class="line"><span class="comment"></span></div>
@@ -434,15 +436,15 @@ $(document).ready(function(){initNavTree('examples_2zigbee_gw_8hpp-example.html'
 <div class="line"><span class="comment">    */</span></div>
 <div class="line">    <span class="keywordtype">bool</span> sendGatewayCommand(ZDeviceSPtr zdev, <a class="code" href="classcloud6_1_1_command.html" title="The command.">cloud6::Command</a> <span class="keyword">const</span>&amp; cmd)</div>
 <div class="line">    {</div>
-<div class="line">        <span class="keyword">const</span> <span class="keywordtype">int</span> intent = zdev-&gt;gw.findCommandIntentByName(cmd.<a name="a15"></a><a class="code" href="classcloud6_1_1_command.html#a9a2326f35466e54c36c070829245c557" title="The command name.">name</a>);</div>
+<div class="line">        <span class="keyword">const</span> <span class="keywordtype">int</span> intent = zdev-&gt;gw.findCommandIntentByName(cmd.<a name="a16"></a><a class="code" href="classcloud6_1_1_command.html#a9a2326f35466e54c36c070829245c557" title="The command name.">name</a>);</div>
 <div class="line">        <span class="keywordflow">if</span> (0 &lt;= intent)</div>
 <div class="line">        {</div>
 <div class="line">            <a class="code" href="log_8hpp.html#adce386f1611953d8e958a59dc76878f2" title="Send a log message at INFO level.">HIVELOG_INFO</a>(m_log, <span class="stringliteral">&quot;command: \&quot;&quot;</span> &lt;&lt; cmd.<a class="code" href="classcloud6_1_1_command.html#a9a2326f35466e54c36c070829245c557" title="The command name.">name</a></div>
 <div class="line">                &lt;&lt; <span class="stringliteral">&quot;\&quot; mapped to #&quot;</span> &lt;&lt; intent &lt;&lt; <span class="stringliteral">&quot; intent&quot;</span>);</div>
 <div class="line"></div>
 <div class="line">            <a class="code" href="classhive_1_1json_1_1_value.html" title="The JSON value.">json::Value</a> data;</div>
-<div class="line">            data[<span class="stringliteral">&quot;id&quot;</span>] = cmd.<a name="a16"></a><a class="code" href="classcloud6_1_1_command.html#a67ad6af156c80ad0366da425d781a8d0" title="The command identifier.">id</a>;</div>
-<div class="line">            data[<span class="stringliteral">&quot;parameters&quot;</span>] = cmd.<a name="a17"></a><a class="code" href="classcloud6_1_1_command.html#a316a73d7aa441b3f406b92c4cfa81dd8" title="The command parameters.">params</a>;</div>
+<div class="line">            data[<span class="stringliteral">&quot;id&quot;</span>] = cmd.<a name="a17"></a><a class="code" href="classcloud6_1_1_command.html#a67ad6af156c80ad0366da425d781a8d0" title="The command identifier.">id</a>;</div>
+<div class="line">            data[<span class="stringliteral">&quot;parameters&quot;</span>] = cmd.<a name="a18"></a><a class="code" href="classcloud6_1_1_command.html#a316a73d7aa441b3f406b92c4cfa81dd8" title="The command parameters.">params</a>;</div>
 <div class="line">            <span class="keywordflow">if</span> (!sendGatewayMessage(zdev, intent, data))</div>
 <div class="line">                <span class="keywordflow">throw</span> std::runtime_error(<span class="stringliteral">&quot;invalid command format&quot;</span>);</div>
 <div class="line">            <span class="keywordflow">return</span> <span class="keyword">false</span>; <span class="comment">// device will report command result later!</span></div>
@@ -464,7 +466,7 @@ $(document).ready(function(){initNavTree('examples_2zigbee_gw_8hpp-example.html'
 <div class="line">    <span class="keywordtype">bool</span> sendGatewayMessage(ZDeviceSPtr zdev, <span class="keywordtype">int</span> intent, <a class="code" href="classhive_1_1json_1_1_value.html" title="The JSON value.">json::Value</a> <span class="keyword">const</span>&amp; data)</div>
 <div class="line">    {</div>
 <div class="line">        <span class="keyword">const</span> <a class="code" href="classgateway_1_1_engine.html" title="The gateway engine.">gateway::Engine</a> &amp;gw = zdev ? zdev-&gt;gw : m_gw;</div>
-<div class="line">        <span class="keywordflow">if</span> (<a class="code" href="classgateway_1_1_frame.html#a7cb0da6f2b25f2585288d60035cd24bb" title="The shared pointer type.">gateway::Frame::SharedPtr</a> frame = gw.<a name="a18"></a><a class="code" href="classgateway_1_1_engine.html#a35a66f717a938d600ad28c34fe5daba2" title="Convert JSON payload into binary frame.">jsonToFrame</a>(intent, data))</div>
+<div class="line">        <span class="keywordflow">if</span> (<a class="code" href="classgateway_1_1_frame.html#a7cb0da6f2b25f2585288d60035cd24bb" title="The shared pointer type.">gateway::Frame::SharedPtr</a> frame = gw.<a name="a19"></a><a class="code" href="classgateway_1_1_engine.html#a35a66f717a938d600ad28c34fe5daba2" title="Convert JSON payload into binary frame.">jsonToFrame</a>(intent, data))</div>
 <div class="line">        {</div>
 <div class="line">            <span class="keywordflow">if</span> (zdev)</div>
 <div class="line">                sendGatewayFrame(frame, zdev-&gt;address64, zdev-&gt;address16);</div>
@@ -474,7 +476,7 @@ $(document).ready(function(){initNavTree('examples_2zigbee_gw_8hpp-example.html'
 <div class="line">            <span class="keywordflow">return</span> <span class="keyword">true</span>;</div>
 <div class="line">        }</div>
 <div class="line">        <span class="keywordflow">else</span></div>
-<div class="line">            <a name="a19"></a><a class="code" href="log_8hpp.html#aeafea17d7e00f3418b9a129c64964e04" title="Send a log string at WARN level.">HIVELOG_WARN_STR</a>(m_log, <span class="stringliteral">&quot;cannot convert frame to binary format&quot;</span>);</div>
+<div class="line">            <a name="a20"></a><a class="code" href="log_8hpp.html#aeafea17d7e00f3418b9a129c64964e04" title="Send a log string at WARN level.">HIVELOG_WARN_STR</a>(m_log, <span class="stringliteral">&quot;cannot convert frame to binary format&quot;</span>);</div>
 <div class="line"></div>
 <div class="line">        <span class="keywordflow">return</span> <span class="keyword">false</span>;</div>
 <div class="line">    }</div>
@@ -498,7 +500,7 @@ $(document).ready(function(){initNavTree('examples_2zigbee_gw_8hpp-example.html'
 <div class="line"></div>
 <div class="line">                <span class="keywordflow">for</span> (<span class="keywordtype">size_t</span> i = 0 ; i &lt; N; ++i)</div>
 <div class="line">                {</div>
-<div class="line">                    <a name="_a20"></a><a class="code" href="classxbee_1_1_frame_1_1_z_b_transmit_request.html" title="The ZigBee Transmit Request payload.">xbee::Frame::ZBTransmitRequest</a> payload(<a name="a21"></a><a class="code" href="namespacehive.html#afbeda3fd1bdc8c37d01bdf9f5c8274ff" title="The string.">String</a>(data, data + XBEE_FRAGMENTATION), m_xbeeFrameId++, da64, da16);</div>
+<div class="line">                    <a name="_a21"></a><a class="code" href="classxbee_1_1_frame_1_1_z_b_transmit_request.html" title="The ZigBee Transmit Request payload.">xbee::Frame::ZBTransmitRequest</a> payload(<a name="a22"></a><a class="code" href="namespacehive.html#afbeda3fd1bdc8c37d01bdf9f5c8274ff" title="The string.">String</a>(data, data + XBEE_FRAGMENTATION), m_xbeeFrameId++, da64, da16);</div>
 <div class="line">                    sendXBeeFrame(payload);</div>
 <div class="line">                    data += XBEE_FRAGMENTATION;</div>
 <div class="line">                }</div>
@@ -535,7 +537,7 @@ $(document).ready(function(){initNavTree('examples_2zigbee_gw_8hpp-example.html'
 <div class="line">    <span class="keyword">template</span>&lt;<span class="keyword">typename</span> PayloadT&gt;</div>
 <div class="line">    <span class="keywordtype">void</span> sendXBeeFrame(PayloadT <span class="keyword">const</span>&amp; payload)</div>
 <div class="line">    {</div>
-<div class="line">        m_xbee-&gt;send(<a name="a22"></a><a class="code" href="classxbee_1_1_frame.html#ad3068c755d35b0b0f38da8e1d2cfdd7e" title="Construct the frame from the payload.">xbee::Frame::create</a>(payload),</div>
+<div class="line">        m_xbee-&gt;send(<a name="a23"></a><a class="code" href="classxbee_1_1_frame.html#ad3068c755d35b0b0f38da8e1d2cfdd7e" title="Construct the frame from the payload.">xbee::Frame::create</a>(payload),</div>
 <div class="line">            boost::bind(&amp;This::onSendXBeeFrame,</div>
 <div class="line">                shared_from_this(), _1, _2));</div>
 <div class="line">    }</div>
@@ -550,14 +552,14 @@ $(document).ready(function(){initNavTree('examples_2zigbee_gw_8hpp-example.html'
 <div class="line">    {</div>
 <div class="line">        <span class="keywordflow">if</span> (!err &amp;&amp; frame)</div>
 <div class="line">        {</div>
-<div class="line">            <a name="a23"></a><a class="code" href="log_8hpp.html#a13680bab2a3a06fa54539daff70ff298" title="Send a log message at DEBUG level.">HIVELOG_DEBUG</a>(m_log, <span class="stringliteral">&quot;frame successfully sent #&quot;</span></div>
+<div class="line">            <a name="a24"></a><a class="code" href="log_8hpp.html#a13680bab2a3a06fa54539daff70ff298" title="Send a log message at DEBUG level.">HIVELOG_DEBUG</a>(m_log, <span class="stringliteral">&quot;frame successfully sent #&quot;</span></div>
 <div class="line">                &lt;&lt; frame-&gt;getIntent() &lt;&lt; <span class="stringliteral">&quot;: [&quot;</span></div>
 <div class="line">                &lt;&lt; m_xbee-&gt;hexdump(frame) &lt;&lt; <span class="stringliteral">&quot;], &quot;</span></div>
 <div class="line">                &lt;&lt; frame-&gt;size() &lt;&lt; <span class="stringliteral">&quot; bytes:\n&quot;</span></div>
-<div class="line">                &lt;&lt; <a name="a24"></a><a class="code" href="classxbee_1_1_debug.html#a0b4fc0c457f68c778b736cda7bf8841f" title="Dump the AT command request to string.">xbee::Debug::dump</a>(frame));</div>
+<div class="line">                &lt;&lt; <a name="a25"></a><a class="code" href="classxbee_1_1_debug.html#a0b4fc0c457f68c778b736cda7bf8841f" title="Dump the AT command request to string.">xbee::Debug::dump</a>(frame));</div>
 <div class="line">        }</div>
 <div class="line">        <span class="keywordflow">else</span> <span class="keywordflow">if</span> (err == boost::asio::error::operation_aborted)</div>
-<div class="line">            <a name="a25"></a><a class="code" href="log_8hpp.html#afc380ebe7c003adb3bc83658ceed35ad" title="Send a log string at DEBUG level.">HIVELOG_DEBUG_STR</a>(m_log, <span class="stringliteral">&quot;TX operation cancelled&quot;</span>);</div>
+<div class="line">            <a name="a26"></a><a class="code" href="log_8hpp.html#afc380ebe7c003adb3bc83658ceed35ad" title="Send a log string at DEBUG level.">HIVELOG_DEBUG_STR</a>(m_log, <span class="stringliteral">&quot;TX operation cancelled&quot;</span>);</div>
 <div class="line">        <span class="keywordflow">else</span></div>
 <div class="line">        {</div>
 <div class="line">            <a class="code" href="log_8hpp.html#a36cc4f1f3e9031a86681c365f8ee6da5" title="Send a log message at ERROR level.">HIVELOG_ERROR</a>(m_log, <span class="stringliteral">&quot;failed to send frame: [&quot;</span></div>
@@ -627,24 +629,24 @@ $(document).ready(function(){initNavTree('examples_2zigbee_gw_8hpp-example.html'
 <div class="line">    {</div>
 <div class="line">        <span class="keywordflow">switch</span> (frame-&gt;getIntent())</div>
 <div class="line">        {</div>
-<div class="line">            <span class="keywordflow">case</span> <a name="a26"></a><a class="code" href="classxbee_1_1_frame.html#a1d1cfd8ffb84e947f82999c682b666a7a58e90b26a4c3ee14855c35290e6253f4">xbee::Frame::ZB_RECEIVE_PACKET</a>:</div>
+<div class="line">            <span class="keywordflow">case</span> <a name="a27"></a><a class="code" href="classxbee_1_1_frame.html#a1d1cfd8ffb84e947f82999c682b666a7a58e90b26a4c3ee14855c35290e6253f4">xbee::Frame::ZB_RECEIVE_PACKET</a>:</div>
 <div class="line">            {</div>
-<div class="line">                <a name="_a27"></a><a class="code" href="classxbee_1_1_frame_1_1_z_b_receive_packet.html" title="The ZigBee Receive Packet payload.">xbee::Frame::ZBReceivePacket</a> payload;</div>
+<div class="line">                <a name="_a28"></a><a class="code" href="classxbee_1_1_frame_1_1_z_b_receive_packet.html" title="The ZigBee Receive Packet payload.">xbee::Frame::ZBReceivePacket</a> payload;</div>
 <div class="line">                <span class="keywordflow">if</span> (frame-&gt;getPayload(payload))</div>
 <div class="line">                {</div>
-<div class="line">                    boost::shared_ptr&lt;ZDevice&gt; zdev = getZDevice(payload.<a name="a28"></a><a class="code" href="classxbee_1_1_frame_1_1_z_b_receive_packet.html#afebbb56ccb4367303442f4abb0dad314" title="The source address (64 bits).">srcAddr64</a>);</div>
-<div class="line">                    zdev-&gt;address16 = payload.<a name="a29"></a><a class="code" href="classxbee_1_1_frame_1_1_z_b_receive_packet.html#ad016c3e5d9d56de0de23d39bfc391008" title="The source network address (16 bits).">srcAddr16</a>;</div>
+<div class="line">                    boost::shared_ptr&lt;ZDevice&gt; zdev = getZDevice(payload.<a name="a29"></a><a class="code" href="classxbee_1_1_frame_1_1_z_b_receive_packet.html#afebbb56ccb4367303442f4abb0dad314" title="The source address (64 bits).">srcAddr64</a>);</div>
+<div class="line">                    zdev-&gt;address16 = payload.<a name="a30"></a><a class="code" href="classxbee_1_1_frame_1_1_z_b_receive_packet.html#ad016c3e5d9d56de0de23d39bfc391008" title="The source network address (16 bits).">srcAddr16</a>;</div>
 <div class="line"></div>
 <div class="line">                    { <span class="comment">// put the data to the stream buffer</span></div>
 <div class="line">                        <a class="code" href="namespacehive.html#a4fcce0eedf9be71754b55a7e7a6d7f50" title="The basic output stream.">OStream</a> os(&amp;zdev-&gt;m_rx_buf);</div>
-<div class="line">                        os.write(payload.<a name="a30"></a><a class="code" href="classxbee_1_1_frame_1_1_z_b_receive_packet.html#a1393b21435bd418d78d2fb07973af726" title="The data string.">data</a>.data(), payload.<a class="code" href="classxbee_1_1_frame_1_1_z_b_receive_packet.html#a1393b21435bd418d78d2fb07973af726" title="The data string.">data</a>.size());</div>
+<div class="line">                        os.write(payload.<a name="a31"></a><a class="code" href="classxbee_1_1_frame_1_1_z_b_receive_packet.html#a1393b21435bd418d78d2fb07973af726" title="The data string.">data</a>.data(), payload.<a class="code" href="classxbee_1_1_frame_1_1_z_b_receive_packet.html#a1393b21435bd418d78d2fb07973af726" title="The data string.">data</a>.size());</div>
 <div class="line">                    }</div>
 <div class="line"></div>
-<div class="line">                    <a class="code" href="log_8hpp.html#a13680bab2a3a06fa54539daff70ff298" title="Send a log message at DEBUG level.">HIVELOG_DEBUG</a>(m_log, <span class="stringliteral">&quot;got [&quot;</span> &lt;&lt; <a name="a31"></a><a class="code" href="namespacehive_1_1dump.html#a36717d7b2f27e1e09db14854aaabfd09" title="Dump the binary data to output stream in HEX format.">dump::hex</a>(payload.<a class="code" href="classxbee_1_1_frame_1_1_z_b_receive_packet.html#a1393b21435bd418d78d2fb07973af726" title="The data string.">data</a>) &lt;&lt; <span class="stringliteral">&quot;] from &quot;</span></div>
+<div class="line">                    <a class="code" href="log_8hpp.html#a13680bab2a3a06fa54539daff70ff298" title="Send a log message at DEBUG level.">HIVELOG_DEBUG</a>(m_log, <span class="stringliteral">&quot;got [&quot;</span> &lt;&lt; <a name="a32"></a><a class="code" href="namespacehive_1_1dump.html#a36717d7b2f27e1e09db14854aaabfd09" title="Dump the binary data to output stream in HEX format.">dump::hex</a>(payload.<a class="code" href="classxbee_1_1_frame_1_1_z_b_receive_packet.html#a1393b21435bd418d78d2fb07973af726" title="The data string.">data</a>) &lt;&lt; <span class="stringliteral">&quot;] from &quot;</span></div>
 <div class="line">                        &lt;&lt; <a class="code" href="namespacehive_1_1dump.html#a36717d7b2f27e1e09db14854aaabfd09" title="Dump the binary data to output stream in HEX format.">dump::hex</a>(payload.<a class="code" href="classxbee_1_1_frame_1_1_z_b_receive_packet.html#afebbb56ccb4367303442f4abb0dad314" title="The source address (64 bits).">srcAddr64</a>) &lt;&lt; <span class="stringliteral">&quot;/&quot;</span> &lt;&lt; <a class="code" href="namespacehive_1_1dump.html#a36717d7b2f27e1e09db14854aaabfd09" title="Dump the binary data to output stream in HEX format.">dump::hex</a>(payload.<a class="code" href="classxbee_1_1_frame_1_1_z_b_receive_packet.html#ad016c3e5d9d56de0de23d39bfc391008" title="The source network address (16 bits).">srcAddr16</a>));</div>
 <div class="line"></div>
-<div class="line">                    <a class="code" href="classgateway_1_1_frame.html#ac77cdc32c6f64752dca142a88308d66d" title="The frame parse result.">gateway::Frame::ParseResult</a> result = <a name="a32"></a><a class="code" href="classgateway_1_1_frame.html#ac77cdc32c6f64752dca142a88308d66daf3d0d72febdcc6491554576ed31f686e" title="Frame succcessfully parsed.">gateway::Frame::RESULT_SUCCESS</a>;</div>
-<div class="line">                    <span class="keywordflow">if</span> (<a class="code" href="classgateway_1_1_frame.html#a7cb0da6f2b25f2585288d60035cd24bb" title="The shared pointer type.">gateway::Frame::SharedPtr</a> frame = <a name="a33"></a><a class="code" href="classgateway_1_1_frame.html#a4de8cffbe6e01c5a20261b9211f479f4" title="Assign the frame content.">gateway::Frame::parseFrame</a>(zdev-&gt;m_rx_buf, &amp;result))</div>
+<div class="line">                    <a class="code" href="classgateway_1_1_frame.html#ac77cdc32c6f64752dca142a88308d66d" title="The frame parse result.">gateway::Frame::ParseResult</a> result = <a name="a33"></a><a class="code" href="classgateway_1_1_frame.html#ac77cdc32c6f64752dca142a88308d66daf3d0d72febdcc6491554576ed31f686e" title="Frame succcessfully parsed.">gateway::Frame::RESULT_SUCCESS</a>;</div>
+<div class="line">                    <span class="keywordflow">if</span> (<a class="code" href="classgateway_1_1_frame.html#a7cb0da6f2b25f2585288d60035cd24bb" title="The shared pointer type.">gateway::Frame::SharedPtr</a> frame = <a name="a34"></a><a class="code" href="classgateway_1_1_frame.html#a4de8cffbe6e01c5a20261b9211f479f4" title="Assign the frame content.">gateway::Frame::parseFrame</a>(zdev-&gt;m_rx_buf, &amp;result))</div>
 <div class="line">                    {</div>
 <div class="line">                        handleGatewayMessage(frame-&gt;getIntent(),</div>
 <div class="line">                            zdev-&gt;gw.frameToJson(frame), zdev);</div>
@@ -667,18 +669,18 @@ $(document).ready(function(){initNavTree('examples_2zigbee_gw_8hpp-example.html'
 <div class="line">    <span class="keywordtype">void</span> createDevice(ZDeviceSPtr zdev, <a class="code" href="classhive_1_1json_1_1_value.html" title="The JSON value.">json::Value</a> <span class="keyword">const</span>&amp; jdev)</div>
 <div class="line">    {</div>
 <div class="line">        { <span class="comment">// create device</span></div>
-<div class="line">            <a class="code" href="namespacehive.html#afbeda3fd1bdc8c37d01bdf9f5c8274ff" title="The string.">String</a> <span class="keywordtype">id</span> = jdev[<span class="stringliteral">&quot;id&quot;</span>].<a name="a34"></a><a class="code" href="classhive_1_1json_1_1_value.html#a28e2e3930e88f62ae705aba30059264b" title="Get the value as STRING.">asString</a>();</div>
+<div class="line">            <a class="code" href="namespacehive.html#afbeda3fd1bdc8c37d01bdf9f5c8274ff" title="The string.">String</a> <span class="keywordtype">id</span> = jdev[<span class="stringliteral">&quot;id&quot;</span>].<a name="a35"></a><a class="code" href="classhive_1_1json_1_1_value.html#a28e2e3930e88f62ae705aba30059264b" title="Get the value as STRING.">asString</a>();</div>
 <div class="line">            <a class="code" href="namespacehive.html#afbeda3fd1bdc8c37d01bdf9f5c8274ff" title="The string.">String</a> key = jdev[<span class="stringliteral">&quot;key&quot;</span>].<a class="code" href="classhive_1_1json_1_1_value.html#a28e2e3930e88f62ae705aba30059264b" title="Get the value as STRING.">asString</a>();</div>
 <div class="line">            <a class="code" href="namespacehive.html#afbeda3fd1bdc8c37d01bdf9f5c8274ff" title="The string.">String</a> name = jdev[<span class="stringliteral">&quot;name&quot;</span>].<a class="code" href="classhive_1_1json_1_1_value.html#a28e2e3930e88f62ae705aba30059264b" title="Get the value as STRING.">asString</a>();</div>
 <div class="line"></div>
 <div class="line">            <span class="comment">// TODO: get network from command line</span></div>
-<div class="line">            <a class="code" href="namespacecloud6.html#a05192a831a20c289602256da62acdeb6" title="The network shared pointer type.">cloud6::NetworkPtr</a> network = <a name="a35"></a><a class="code" href="classcloud6_1_1_network.html#aa1afeda7b7096504974c5d4a07e3d989" title="The factory method.">cloud6::Network::create</a>(</div>
+<div class="line">            <a class="code" href="namespacecloud6.html#a05192a831a20c289602256da62acdeb6" title="The network shared pointer type.">cloud6::NetworkPtr</a> network = <a name="a36"></a><a class="code" href="classcloud6_1_1_network.html#aa1afeda7b7096504974c5d4a07e3d989" title="The factory method.">cloud6::Network::create</a>(</div>
 <div class="line">                m_networkName, m_networkKey, m_networkDesc);</div>
 <div class="line"></div>
-<div class="line">            <a class="code" href="classcloud6_1_1_device.html#a0afa7085d8f05f7c1e43f4cb929310df" title="The device class shared pointer type.">cloud6::Device::ClassPtr</a> deviceClass = <a name="a36"></a><a class="code" href="classcloud6_1_1_device_1_1_class.html#a5a0b772eae6af54cf28b04e2e550e76c" title="The factory method.">cloud6::Device::Class::create</a>(<span class="stringliteral">&quot;&quot;</span>, <span class="stringliteral">&quot;&quot;</span>, <span class="keyword">false</span>, <a class="code" href="namespacezigbee__gw.html#abed82baf7f470b522273a3e37c24c600a6ca50011e1c6f39397f32634d03589e5">DEVICE_OFFLINE_TIMEOUT</a>);</div>
-<div class="line">            <a name="a37"></a><a class="code" href="classcloud6_1_1_serializer.html#a0afa5d94198c2adf67c0c3a86a27b601" title="Update device class from the JSON value.">cloud6::Serializer::json2deviceClass</a>(jdev[<span class="stringliteral">&quot;deviceClass&quot;</span>], deviceClass);</div>
+<div class="line">            <a class="code" href="classcloud6_1_1_device.html#a0afa7085d8f05f7c1e43f4cb929310df" title="The device class shared pointer type.">cloud6::Device::ClassPtr</a> deviceClass = <a name="a37"></a><a class="code" href="classcloud6_1_1_device_1_1_class.html#a5a0b772eae6af54cf28b04e2e550e76c" title="The factory method.">cloud6::Device::Class::create</a>(<span class="stringliteral">&quot;&quot;</span>, <span class="stringliteral">&quot;&quot;</span>, <span class="keyword">false</span>, <a class="code" href="namespacezigbee__gw.html#abed82baf7f470b522273a3e37c24c600a6ca50011e1c6f39397f32634d03589e5">DEVICE_OFFLINE_TIMEOUT</a>);</div>
+<div class="line">            <a name="a38"></a><a class="code" href="classcloud6_1_1_serializer.html#a0afa5d94198c2adf67c0c3a86a27b601" title="Update device class from the JSON value.">cloud6::Serializer::json2deviceClass</a>(jdev[<span class="stringliteral">&quot;deviceClass&quot;</span>], deviceClass);</div>
 <div class="line"></div>
-<div class="line">            zdev-&gt;device = <a name="a38"></a><a class="code" href="classcloud6_1_1_device.html#add7ab61f5ae2f334405efcd41ca1c3c4" title="The factory method.">cloud6::Device::create</a>(<span class="keywordtype">id</span>, name, key, deviceClass, network);</div>
+<div class="line">            zdev-&gt;device = <a name="a39"></a><a class="code" href="classcloud6_1_1_device.html#add7ab61f5ae2f334405efcd41ca1c3c4" title="The factory method.">cloud6::Device::create</a>(<span class="keywordtype">id</span>, name, key, deviceClass, network);</div>
 <div class="line">            zdev-&gt;device-&gt;status = <span class="stringliteral">&quot;Online&quot;</span>;</div>
 <div class="line"></div>
 <div class="line">            zdev-&gt;delayedNotifications.clear();</div>
@@ -687,7 +689,7 @@ $(document).ready(function(){initNavTree('examples_2zigbee_gw_8hpp-example.html'
 <div class="line"></div>
 <div class="line">        { <span class="comment">// update equipment</span></div>
 <div class="line">            <a class="code" href="classhive_1_1json_1_1_value.html" title="The JSON value.">json::Value</a> <span class="keyword">const</span>&amp; equipment = jdev[<span class="stringliteral">&quot;equipment&quot;</span>];</div>
-<div class="line">            <span class="keyword">const</span> <span class="keywordtype">size_t</span> N = equipment.<a name="a39"></a><a class="code" href="classhive_1_1json_1_1_value.html#aac782da1f912bceb5d8ad00c8dc892ac" title="Get the number of elements in ARRAY or OBJECT.">size</a>();</div>
+<div class="line">            <span class="keyword">const</span> <span class="keywordtype">size_t</span> N = equipment.<a name="a40"></a><a class="code" href="classhive_1_1json_1_1_value.html#aac782da1f912bceb5d8ad00c8dc892ac" title="Get the number of elements in ARRAY or OBJECT.">size</a>();</div>
 <div class="line">            <span class="keywordflow">for</span> (<span class="keywordtype">size_t</span> i = 0; i &lt; N; ++i)</div>
 <div class="line">            {</div>
 <div class="line">                <a class="code" href="classhive_1_1json_1_1_value.html" title="The JSON value.">json::Value</a> <span class="keyword">const</span>&amp; eq = equipment[i];</div>
@@ -696,7 +698,7 @@ $(document).ready(function(){initNavTree('examples_2zigbee_gw_8hpp-example.html'
 <div class="line">                <a class="code" href="namespacehive.html#afbeda3fd1bdc8c37d01bdf9f5c8274ff" title="The string.">String</a> name = eq[<span class="stringliteral">&quot;name&quot;</span>].<a class="code" href="classhive_1_1json_1_1_value.html#a28e2e3930e88f62ae705aba30059264b" title="Get the value as STRING.">asString</a>();</div>
 <div class="line">                <a class="code" href="namespacehive.html#afbeda3fd1bdc8c37d01bdf9f5c8274ff" title="The string.">String</a> type = eq[<span class="stringliteral">&quot;type&quot;</span>].<a class="code" href="classhive_1_1json_1_1_value.html#a28e2e3930e88f62ae705aba30059264b" title="Get the value as STRING.">asString</a>();</div>
 <div class="line"></div>
-<div class="line">                zdev-&gt;device-&gt;equipment.push_back(<a name="a40"></a><a class="code" href="classcloud6_1_1_equipment.html#a1a6de3f200227f8a385bdfd743e4bb69" title="The factory method.">cloud6::Equipment::create</a>(<span class="keywordtype">id</span>, name, type));</div>
+<div class="line">                zdev-&gt;device-&gt;equipment.push_back(<a name="a41"></a><a class="code" href="classcloud6_1_1_equipment.html#a1a6de3f200227f8a385bdfd743e4bb69" title="The factory method.">cloud6::Equipment::create</a>(<span class="keywordtype">id</span>, name, type));</div>
 <div class="line">            }</div>
 <div class="line">        }</div>
 <div class="line">    }</div>
@@ -712,14 +714,14 @@ $(document).ready(function(){initNavTree('examples_2zigbee_gw_8hpp-example.html'
 <div class="line">    {</div>
 <div class="line">        <a class="code" href="log_8hpp.html#adce386f1611953d8e958a59dc76878f2" title="Send a log message at INFO level.">HIVELOG_INFO</a>(m_log, <span class="stringliteral">&quot;process intent #&quot;</span> &lt;&lt; intent &lt;&lt; <span class="stringliteral">&quot; data: &quot;</span> &lt;&lt; data &lt;&lt; <span class="stringliteral">&quot;\n&quot;</span>);</div>
 <div class="line"></div>
-<div class="line">        <span class="keywordflow">if</span> (intent == <a name="a41"></a><a class="code" href="namespacegateway.html#a91a5c9f7bb1a8c5152e0e25e56718621a36ade28be81adc261fdc118cb2cd5867" title="The registration response.">gateway::INTENT_REGISTRATION_RESPONSE</a>)</div>
+<div class="line">        <span class="keywordflow">if</span> (intent == <a name="a42"></a><a class="code" href="namespacegateway.html#a91a5c9f7bb1a8c5152e0e25e56718621a36ade28be81adc261fdc118cb2cd5867" title="The registration response.">gateway::INTENT_REGISTRATION_RESPONSE</a>)</div>
 <div class="line">        {</div>
 <div class="line">            zdev-&gt;gw.handleRegisterResponse(data);</div>
 <div class="line">            createDevice(zdev, data);</div>
 <div class="line">            asyncRegisterDevice(zdev-&gt;device);</div>
 <div class="line">        }</div>
 <div class="line"></div>
-<div class="line">        <span class="keywordflow">else</span> <span class="keywordflow">if</span> (intent == <a name="a42"></a><a class="code" href="namespacegateway.html#a91a5c9f7bb1a8c5152e0e25e56718621a73b41f4bf024a09670cb115ee4ec6626" title="The registration response (JSON format).">gateway::INTENT_REGISTRATION2_RESPONSE</a>)</div>
+<div class="line">        <span class="keywordflow">else</span> <span class="keywordflow">if</span> (intent == <a name="a43"></a><a class="code" href="namespacegateway.html#a91a5c9f7bb1a8c5152e0e25e56718621a73b41f4bf024a09670cb115ee4ec6626" title="The registration response (JSON format).">gateway::INTENT_REGISTRATION2_RESPONSE</a>)</div>
 <div class="line">        {</div>
 <div class="line">            <a class="code" href="classhive_1_1json_1_1_value.html" title="The JSON value.">json::Value</a> jdev = json::fromStr(data[<span class="stringliteral">&quot;json&quot;</span>].asString());</div>
 <div class="line">            zdev-&gt;gw.handleRegister2Response(jdev);</div>
@@ -727,14 +729,14 @@ $(document).ready(function(){initNavTree('examples_2zigbee_gw_8hpp-example.html'
 <div class="line">            asyncRegisterDevice(zdev-&gt;device);</div>
 <div class="line">        }</div>
 <div class="line"></div>
-<div class="line">        <span class="keywordflow">else</span> <span class="keywordflow">if</span> (intent == <a name="a43"></a><a class="code" href="namespacegateway.html#a91a5c9f7bb1a8c5152e0e25e56718621a0e0ca067e90039685ac1ce62dc6bb0fe" title="The command result response.">gateway::INTENT_COMMAND_RESULT_RESPONSE</a>)</div>
+<div class="line">        <span class="keywordflow">else</span> <span class="keywordflow">if</span> (intent == <a name="a44"></a><a class="code" href="namespacegateway.html#a91a5c9f7bb1a8c5152e0e25e56718621a0e0ca067e90039685ac1ce62dc6bb0fe" title="The command result response.">gateway::INTENT_COMMAND_RESULT_RESPONSE</a>)</div>
 <div class="line">        {</div>
 <div class="line">            <span class="keywordflow">if</span> (zdev-&gt;device)</div>
 <div class="line">            {</div>
 <div class="line">                <a class="code" href="log_8hpp.html#a13680bab2a3a06fa54539daff70ff298" title="Send a log message at DEBUG level.">HIVELOG_DEBUG</a>(m_log, <span class="stringliteral">&quot;got command result&quot;</span>);</div>
 <div class="line"></div>
 <div class="line">                <a class="code" href="classcloud6_1_1_command.html" title="The command.">cloud6::Command</a> cmd;</div>
-<div class="line">                cmd.<a class="code" href="classcloud6_1_1_command.html#a67ad6af156c80ad0366da425d781a8d0" title="The command identifier.">id</a> = data[<span class="stringliteral">&quot;id&quot;</span>].<a name="a44"></a><a class="code" href="classhive_1_1json_1_1_value.html#a606273a7f81494602eb25f8372fb8e4e" title="Get the value as unsigned INTEGER (64 bits). ">asUInt</a>();</div>
+<div class="line">                cmd.<a class="code" href="classcloud6_1_1_command.html#a67ad6af156c80ad0366da425d781a8d0" title="The command identifier.">id</a> = data[<span class="stringliteral">&quot;id&quot;</span>].<a name="a45"></a><a class="code" href="classhive_1_1json_1_1_value.html#a606273a7f81494602eb25f8372fb8e4e" title="Get the value as unsigned INTEGER (64 bits). ">asUInt</a>();</div>
 <div class="line">                cmd.<a class="code" href="classcloud6_1_1_command.html#a4e531c185af848083db0808335a78168" title="Command status.">status</a> = data[<span class="stringliteral">&quot;status&quot;</span>].<a class="code" href="classhive_1_1json_1_1_value.html#a28e2e3930e88f62ae705aba30059264b" title="Get the value as STRING.">asString</a>();</div>
 <div class="line">                cmd.<a class="code" href="classcloud6_1_1_command.html#ade3e4dd136fe976f4d00476ead564457" title="Command result.">result</a> = data[<span class="stringliteral">&quot;result&quot;</span>].<a class="code" href="classhive_1_1json_1_1_value.html#a28e2e3930e88f62ae705aba30059264b" title="Get the value as STRING.">asString</a>();</div>
 <div class="line"></div>
@@ -744,7 +746,7 @@ $(document).ready(function(){initNavTree('examples_2zigbee_gw_8hpp-example.html'
 <div class="line">                <a class="code" href="log_8hpp.html#aeafea17d7e00f3418b9a129c64964e04" title="Send a log string at WARN level.">HIVELOG_WARN_STR</a>(m_log, <span class="stringliteral">&quot;got command result before registration, ignored&quot;</span>);</div>
 <div class="line">        }</div>
 <div class="line"></div>
-<div class="line">        <span class="keywordflow">else</span> <span class="keywordflow">if</span> (intent &gt;= <a name="a45"></a><a class="code" href="namespacegateway.html#a91a5c9f7bb1a8c5152e0e25e56718621a20a3a4e9a1189dddc40dbe3d5324f0f9" title="The minimum user intent.">gateway::INTENT_USER</a>)</div>
+<div class="line">        <span class="keywordflow">else</span> <span class="keywordflow">if</span> (intent &gt;= <a name="a46"></a><a class="code" href="namespacegateway.html#a91a5c9f7bb1a8c5152e0e25e56718621a20a3a4e9a1189dddc40dbe3d5324f0f9" title="The minimum user intent.">gateway::INTENT_USER</a>)</div>
 <div class="line">        {</div>
 <div class="line">            <span class="keywordflow">if</span> (zdev-&gt;device)</div>
 <div class="line">            {</div>
@@ -756,7 +758,7 @@ $(document).ready(function(){initNavTree('examples_2zigbee_gw_8hpp-example.html'
 <div class="line">                    <span class="keywordflow">if</span> (zdev-&gt;deviceRegistered)</div>
 <div class="line">                    {</div>
 <div class="line">                        asyncInsertNotification(zdev-&gt;device,</div>
-<div class="line">                            <a name="_a46"></a><a class="code" href="classcloud6_1_1_notification.html" title="The notification.">cloud6::Notification</a>(name, data));</div>
+<div class="line">                            <a name="_a47"></a><a class="code" href="classcloud6_1_1_notification.html" title="The notification.">cloud6::Notification</a>(name, data));</div>
 <div class="line">                    }</div>
 <div class="line">                    <span class="keywordflow">else</span></div>
 <div class="line">                    {</div>
@@ -765,7 +767,7 @@ $(document).ready(function(){initNavTree('examples_2zigbee_gw_8hpp-example.html'
 <div class="line">                    }</div>
 <div class="line">                }</div>
 <div class="line">                <span class="keywordflow">else</span></div>
-<div class="line">                    <a name="a47"></a><a class="code" href="log_8hpp.html#a541c7b60a0b4ad1d70d8dba8d5f946b8" title="Send a log message at WARN level.">HIVELOG_WARN</a>(m_log, <span class="stringliteral">&quot;unknown notification: &quot;</span> &lt;&lt; intent &lt;&lt; <span class="stringliteral">&quot;, ignored&quot;</span>);</div>
+<div class="line">                    <a name="a48"></a><a class="code" href="log_8hpp.html#a541c7b60a0b4ad1d70d8dba8d5f946b8" title="Send a log message at WARN level.">HIVELOG_WARN</a>(m_log, <span class="stringliteral">&quot;unknown notification: &quot;</span> &lt;&lt; intent &lt;&lt; <span class="stringliteral">&quot;, ignored&quot;</span>);</div>
 <div class="line">            }</div>
 <div class="line">            <span class="keywordflow">else</span></div>
 <div class="line">                <a class="code" href="log_8hpp.html#aeafea17d7e00f3418b9a129c64964e04" title="Send a log string at WARN level.">HIVELOG_WARN_STR</a>(m_log, <span class="stringliteral">&quot;got notification before registration, ignored&quot;</span>);</div>
@@ -784,7 +786,7 @@ $(document).ready(function(){initNavTree('examples_2zigbee_gw_8hpp-example.html'
 <div class="line">    <a class="code" href="classgateway_1_1_engine.html" title="The gateway engine.">gateway::Engine</a> m_gw; <span class="comment">///&lt; @brief The gateway engine for system intents.</span></div>
 <div class="line"><span class="comment"></span></div>
 <div class="line"><span class="keyword">private</span>:</div>
-<div class="line">    <span class="keyword">typedef</span> <a name="_a48"></a><a class="code" href="classxbee_1_1_a_p_i.html" title="The XBee interface.">xbee::API&lt;boost::asio::serial_port&gt;</a> XBeeAPI; <span class="comment">///&lt; @brief The XBee %API type.</span></div>
+<div class="line">    <span class="keyword">typedef</span> <a name="_a49"></a><a class="code" href="classxbee_1_1_a_p_i.html" title="The XBee interface.">xbee::API&lt;boost::asio::serial_port&gt;</a> XBeeAPI; <span class="comment">///&lt; @brief The XBee %API type.</span></div>
 <div class="line"><span class="comment"></span>    XBeeAPI::SharedPtr m_xbee; <span class="comment">///&lt; @brief The XBee %API.</span></div>
 <div class="line"><span class="comment"></span>    <span class="keywordtype">size_t</span> m_xbeeFrameId; <span class="comment">///&lt; @brief The XBee TX frame identifier.</span></div>
 <div class="line"><span class="comment"></span>};</div>
@@ -796,7 +798,7 @@ $(document).ready(function(){initNavTree('examples_2zigbee_gw_8hpp-example.html'
 <div class="line"><span class="comment">*/</span></div>
 <div class="line"><span class="keyword">class </span>ApplicationWS:</div>
 <div class="line">    <span class="keyword">public</span> <a class="code" href="classbasic__app_1_1_application.html" title="The application skeleton.">basic_app::Application</a>,</div>
-<div class="line">    <span class="keyword">public</span> <a name="_a49"></a><a class="code" href="classcloud7_1_1_server_module_w_s.html" title="The WebSocket Server API submodule.">cloud7::ServerModuleWS</a>,</div>
+<div class="line">    <span class="keyword">public</span> <a name="_a50"></a><a class="code" href="classcloud7_1_1_server_module_w_s.html" title="The WebSocket Server API submodule.">cloud7::ServerModuleWS</a>,</div>
 <div class="line">    <span class="keyword">public</span> <a class="code" href="classgateway_1_1_serial_module.html" title="The Serial submodule.">gateway::SerialModule</a></div>
 <div class="line">{</div>
 <div class="line">    <span class="keyword">typedef</span> <a class="code" href="classbasic__app_1_1_application.html" title="The application skeleton.">basic_app::Application</a> Base; <span class="comment">///&lt; @brief The base class.</span></div>
@@ -934,7 +936,7 @@ $(document).ready(function(){initNavTree('examples_2zigbee_gw_8hpp-example.html'
 <div class="line"><span class="comment"></span>        <a class="code" href="namespacehive.html#a76a5c97c13a602de7a11ea6c20fe74df" title="The 16-bits unsigned integer.">UInt16</a> address16; <span class="comment">///&lt; @brief The network address.</span></div>
 <div class="line"><span class="comment"></span>        boost::asio::streambuf m_rx_buf; <span class="comment">///&lt; @brief The RX stream buffer.</span></div>
 <div class="line"><span class="comment"></span></div>
-<div class="line">        <a name="a50"></a><a class="code" href="namespacecloud6.html#a5cfc435a6fbc96b4c71912911798e0d4" title="The device shared pointer type.">cloud7::DevicePtr</a> device; <span class="comment">///&lt; @brief The corresponding device.</span></div>
+<div class="line">        <a name="a51"></a><a class="code" href="namespacecloud6.html#a5cfc435a6fbc96b4c71912911798e0d4" title="The device shared pointer type.">cloud7::DevicePtr</a> device; <span class="comment">///&lt; @brief The corresponding device.</span></div>
 <div class="line"><span class="comment"></span>        <span class="keywordtype">bool</span> deviceRegistered;    <span class="comment">///&lt; @brief The &quot;registered&quot; flag.</span></div>
 <div class="line"><span class="comment"></span>        std::vector&lt;cloud7::Notification&gt; delayedNotifications; <span class="comment">///&lt; @brief The list of delayed notification.</span></div>
 <div class="line"><span class="comment"></span>        <a class="code" href="classgateway_1_1_engine.html" title="The gateway engine.">gateway::Engine</a> gw; <span class="comment">///&lt; @brief The gateway engine.</span></div>
@@ -1089,7 +1091,7 @@ $(document).ready(function(){initNavTree('examples_2zigbee_gw_8hpp-example.html'
 <div class="line">        <span class="keywordflow">else</span> <span class="keywordflow">if</span> (boost::iequals(action, <span class="stringliteral">&quot;command/insert&quot;</span>)) <span class="comment">// new command</span></div>
 <div class="line">        {</div>
 <div class="line">            <a class="code" href="namespacehive.html#afbeda3fd1bdc8c37d01bdf9f5c8274ff" title="The string.">String</a> <span class="keyword">const</span> deviceId = params[<span class="stringliteral">&quot;deviceGuid&quot;</span>].<a class="code" href="classhive_1_1json_1_1_value.html#a28e2e3930e88f62ae705aba30059264b" title="Get the value as STRING.">asString</a>();</div>
-<div class="line">            <a class="code" href="classcloud6_1_1_command.html" title="The command.">cloud7::Command</a> cmd = <a name="a51"></a><a class="code" href="classcloud6_1_1_serializer.html#a4dfd79096730685fefd301ef2d3bba90" title="Convert the JSON value to the command.">cloud7::Serializer::json2cmd</a>(params[<span class="stringliteral">&quot;command&quot;</span>]);</div>
+<div class="line">            <a class="code" href="classcloud6_1_1_command.html" title="The command.">cloud7::Command</a> cmd = <a name="a52"></a><a class="code" href="classcloud6_1_1_serializer.html#a4dfd79096730685fefd301ef2d3bba90" title="Convert the JSON value to the command.">cloud7::Serializer::json2cmd</a>(params[<span class="stringliteral">&quot;command&quot;</span>]);</div>
 <div class="line">            <span class="keywordflow">if</span> (m_serial.is_open())</div>
 <div class="line">            {</div>
 <div class="line">                <span class="keywordflow">if</span> (ZDeviceSPtr zdev = findZDeviceById(deviceId))</div>
@@ -1416,7 +1418,7 @@ $(document).ready(function(){initNavTree('examples_2zigbee_gw_8hpp-example.html'
 <div class="line">            <a class="code" href="namespacehive.html#afbeda3fd1bdc8c37d01bdf9f5c8274ff" title="The string.">String</a> name = jdev[<span class="stringliteral">&quot;name&quot;</span>].<a class="code" href="classhive_1_1json_1_1_value.html#a28e2e3930e88f62ae705aba30059264b" title="Get the value as STRING.">asString</a>();</div>
 <div class="line"></div>
 <div class="line">            <span class="comment">// TODO: get network from command line</span></div>
-<div class="line">            <a name="a52"></a><a class="code" href="namespacecloud6.html#a05192a831a20c289602256da62acdeb6" title="The network shared pointer type.">cloud7::NetworkPtr</a> network = <a class="code" href="classcloud6_1_1_network.html#aa1afeda7b7096504974c5d4a07e3d989" title="The factory method.">cloud7::Network::create</a>(</div>
+<div class="line">            <a name="a53"></a><a class="code" href="namespacecloud6.html#a05192a831a20c289602256da62acdeb6" title="The network shared pointer type.">cloud7::NetworkPtr</a> network = <a class="code" href="classcloud6_1_1_network.html#aa1afeda7b7096504974c5d4a07e3d989" title="The factory method.">cloud7::Network::create</a>(</div>
 <div class="line">                m_networkName, m_networkKey, m_networkDesc);</div>
 <div class="line"></div>
 <div class="line">            <a class="code" href="classcloud6_1_1_device.html#a0afa7085d8f05f7c1e43f4cb929310df" title="The device class shared pointer type.">cloud7::Device::ClassPtr</a> deviceClass = <a class="code" href="classcloud6_1_1_device_1_1_class.html#a5a0b772eae6af54cf28b04e2e550e76c" title="The factory method.">cloud7::Device::Class::create</a>(<span class="stringliteral">&quot;&quot;</span>, <span class="stringliteral">&quot;&quot;</span>, <span class="keyword">false</span>, <a class="code" href="namespacezigbee__gw.html#abed82baf7f470b522273a3e37c24c600a6ca50011e1c6f39397f32634d03589e5">DEVICE_OFFLINE_TIMEOUT</a>);</div>
@@ -1542,22 +1544,22 @@ $(document).ready(function(){initNavTree('examples_2zigbee_gw_8hpp-example.html'
 <div class="line"><span class="comment">@param[in] argv The command line arguments.</span></div>
 <div class="line"><span class="comment">@param[in] useNewWS Use new websocket service flag.</span></div>
 <div class="line"><span class="comment">*/</span></div>
-<div class="line"><span class="keyword">inline</span> <span class="keywordtype">void</span> <a name="a53"></a><a class="code" href="namespacezigbee__gw.html#a7d7de11e983fc2d92c9ec2f2e0f57033" title="The ZigBee gateway application entry point.">main</a>(<span class="keywordtype">int</span> argc, <span class="keyword">const</span> <span class="keywordtype">char</span>* argv[], <span class="keywordtype">bool</span> useNewWS = <span class="keyword">true</span>)</div>
+<div class="line"><span class="keyword">inline</span> <span class="keywordtype">void</span> <a name="a54"></a><a class="code" href="namespacezigbee__gw.html#a7d7de11e983fc2d92c9ec2f2e0f57033" title="The ZigBee gateway application entry point.">main</a>(<span class="keywordtype">int</span> argc, <span class="keyword">const</span> <span class="keywordtype">char</span>* argv[], <span class="keywordtype">bool</span> useNewWS = <span class="keyword">true</span>)</div>
 <div class="line">{</div>
 <div class="line">    { <span class="comment">// configure logging</span></div>
-<div class="line">        <a class="code" href="classhive_1_1log_1_1_target.html#aee8b75c99333d93584ad6da3ecb2e3fe" title="The shared pointer type.">log::Target::SharedPtr</a> log_file = <a name="a54"></a><a class="code" href="classhive_1_1log_1_1_target.html#a6d18b5cb9afd8313c52008d6c63c79df" title="The factory method.">log::Target::File::create</a>(<span class="stringliteral">&quot;zigbee_gw.log&quot;</span>);</div>
-<div class="line">        <a class="code" href="classhive_1_1log_1_1_target.html#aee8b75c99333d93584ad6da3ecb2e3fe" title="The shared pointer type.">log::Target::SharedPtr</a> log_console = <a name="a55"></a><a class="code" href="classhive_1_1log_1_1_logger.html#aa288e1d280a97ee13840fa5b9d08f775" title="Get the root logger.">log::Logger::root</a>().<a name="a56"></a><a class="code" href="classhive_1_1log_1_1_logger.html#a2e6cebab9ebaaf0e09715269e5ac3009" title="Get the target.">getTarget</a>();</div>
-<div class="line">        <a class="code" href="classhive_1_1log_1_1_logger.html#aa288e1d280a97ee13840fa5b9d08f775" title="Get the root logger.">log::Logger::root</a>().<a name="a57"></a><a class="code" href="classhive_1_1log_1_1_logger.html#a45fcb7516fd49eaf204895f29a0874fe" title="Set the target.">setTarget</a>(<a class="code" href="classhive_1_1log_1_1_target.html#a6d18b5cb9afd8313c52008d6c63c79df" title="The factory method.">log::Target::Tie::create</a>(log_file, log_console));</div>
-<div class="line">        <a class="code" href="classhive_1_1log_1_1_logger.html#aa288e1d280a97ee13840fa5b9d08f775" title="Get the root logger.">log::Logger::root</a>().<a name="a58"></a><a class="code" href="classhive_1_1log_1_1_logger.html#af3c02bfa8fab7fc22c9839ad82903dce" title="Set the logging level.">setLevel</a>(<a name="a59"></a><a class="code" href="namespacehive_1_1log.html#a221b779e6bb7b8d40677d7642bfefac5a1ca076c143f2ec60ba02c86573af9da3" title="The TRACE level.">log::LEVEL_TRACE</a>);</div>
-<div class="line">        <a name="_a60"></a><a class="code" href="classhive_1_1log_1_1_logger.html" title="The logger.">log::Logger</a>(<span class="stringliteral">&quot;/hive/http&quot;</span>).<a class="code" href="classhive_1_1log_1_1_logger.html#a45fcb7516fd49eaf204895f29a0874fe" title="Set the target.">setTarget</a>(log_file).<a class="code" href="classhive_1_1log_1_1_logger.html#af3c02bfa8fab7fc22c9839ad82903dce" title="Set the logging level.">setLevel</a>(<a name="a61"></a><a class="code" href="namespacehive_1_1log.html#a221b779e6bb7b8d40677d7642bfefac5a210bac66f34a56114215d54588b8c7f3" title="The DEBUG level.">log::LEVEL_DEBUG</a>); <span class="comment">// disable annoying messages</span></div>
-<div class="line">        log_console-&gt;setFormat(<a name="a62"></a><a class="code" href="classhive_1_1log_1_1_format.html#a5c721bfbc7afcd8ba55cfdd659c7e718" title="The factory method.">log::Format::create</a>(<span class="stringliteral">&quot;%N %L %M\n&quot;</span>));</div>
+<div class="line">        <a class="code" href="classhive_1_1log_1_1_target.html#aee8b75c99333d93584ad6da3ecb2e3fe" title="The shared pointer type.">log::Target::SharedPtr</a> log_file = <a name="a55"></a><a class="code" href="classhive_1_1log_1_1_target.html#a6d18b5cb9afd8313c52008d6c63c79df" title="The factory method.">log::Target::File::create</a>(<span class="stringliteral">&quot;zigbee_gw.log&quot;</span>);</div>
+<div class="line">        <a class="code" href="classhive_1_1log_1_1_target.html#aee8b75c99333d93584ad6da3ecb2e3fe" title="The shared pointer type.">log::Target::SharedPtr</a> log_console = <a name="a56"></a><a class="code" href="classhive_1_1log_1_1_logger.html#aa288e1d280a97ee13840fa5b9d08f775" title="Get the root logger.">log::Logger::root</a>().<a name="a57"></a><a class="code" href="classhive_1_1log_1_1_logger.html#a2e6cebab9ebaaf0e09715269e5ac3009" title="Get the target.">getTarget</a>();</div>
+<div class="line">        <a class="code" href="classhive_1_1log_1_1_logger.html#aa288e1d280a97ee13840fa5b9d08f775" title="Get the root logger.">log::Logger::root</a>().<a name="a58"></a><a class="code" href="classhive_1_1log_1_1_logger.html#a45fcb7516fd49eaf204895f29a0874fe" title="Set the target.">setTarget</a>(<a class="code" href="classhive_1_1log_1_1_target.html#a6d18b5cb9afd8313c52008d6c63c79df" title="The factory method.">log::Target::Tie::create</a>(log_file, log_console));</div>
+<div class="line">        <a class="code" href="classhive_1_1log_1_1_logger.html#aa288e1d280a97ee13840fa5b9d08f775" title="Get the root logger.">log::Logger::root</a>().<a name="a59"></a><a class="code" href="classhive_1_1log_1_1_logger.html#af3c02bfa8fab7fc22c9839ad82903dce" title="Set the logging level.">setLevel</a>(<a name="a60"></a><a class="code" href="namespacehive_1_1log.html#a221b779e6bb7b8d40677d7642bfefac5a1ca076c143f2ec60ba02c86573af9da3" title="The TRACE level.">log::LEVEL_TRACE</a>);</div>
+<div class="line">        <a name="_a61"></a><a class="code" href="classhive_1_1log_1_1_logger.html" title="The logger.">log::Logger</a>(<span class="stringliteral">&quot;/hive/http&quot;</span>).<a class="code" href="classhive_1_1log_1_1_logger.html#a45fcb7516fd49eaf204895f29a0874fe" title="Set the target.">setTarget</a>(log_file).<a class="code" href="classhive_1_1log_1_1_logger.html#af3c02bfa8fab7fc22c9839ad82903dce" title="Set the logging level.">setLevel</a>(<a name="a62"></a><a class="code" href="namespacehive_1_1log.html#a221b779e6bb7b8d40677d7642bfefac5a210bac66f34a56114215d54588b8c7f3" title="The DEBUG level.">log::LEVEL_DEBUG</a>); <span class="comment">// disable annoying messages</span></div>
+<div class="line">        log_console-&gt;setFormat(<a name="a63"></a><a class="code" href="classhive_1_1log_1_1_format.html#a00280823d23a1360c13c162220c83882" title="The factory method.">log::Format::create</a>(<span class="stringliteral">&quot;%N %L %M\n&quot;</span>));</div>
 <div class="line">        log_console-&gt;setMinimumLevel(<a class="code" href="namespacehive_1_1log.html#a221b779e6bb7b8d40677d7642bfefac5a210bac66f34a56114215d54588b8c7f3" title="The DEBUG level.">log::LEVEL_DEBUG</a>);</div>
 <div class="line">    }</div>
 <div class="line"></div>
 <div class="line">    <span class="keywordflow">if</span> (useNewWS)</div>
-<div class="line">        <a name="a63"></a><a class="code" href="classzigbee__gw_1_1_application_w_s.html#a9ff75310716593d5a291ba43c2a96d49" title="The factory method.">ApplicationWS::create</a>(argc, argv)-&gt;run();</div>
+<div class="line">        <a name="a64"></a><a class="code" href="classzigbee__gw_1_1_application_w_s.html#a9ff75310716593d5a291ba43c2a96d49" title="The factory method.">ApplicationWS::create</a>(argc, argv)-&gt;run();</div>
 <div class="line">    <span class="keywordflow">else</span></div>
-<div class="line">        <a name="a64"></a><a class="code" href="classzigbee__gw_1_1_application.html#a9ff75310716593d5a291ba43c2a96d49" title="The factory method.">Application::create</a>(argc, argv)-&gt;run();</div>
+<div class="line">        <a name="a65"></a><a class="code" href="classzigbee__gw_1_1_application.html#a9ff75310716593d5a291ba43c2a96d49" title="The factory method.">Application::create</a>(argc, argv)-&gt;run();</div>
 <div class="line">}</div>
 <div class="line"></div>
 <div class="line">} <span class="comment">// zigbee_gw namespace</span></div>
@@ -1584,7 +1586,7 @@ $(document).ready(function(){initNavTree('examples_2zigbee_gw_8hpp-example.html'
 <!-- start footer part -->
 <div id="nav-path" class="navpath"><!-- id is needed for treeview function! -->
   <ul>
-    <li class="footer">Generated on Fri Dec 28 2012 16:00:17 for DeviceHive C++ Framework by
+    <li class="footer">Generated on Thu Jan 24 2013 12:25:51 for DeviceHive C++ Framework by
     <a href="http://www.doxygen.org/index.html">
     <img class="footer" src="doxygen.png" alt="doxygen"/></a> 1.8.2 </li>
   </ul>

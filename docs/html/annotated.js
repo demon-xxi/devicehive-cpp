@@ -5,6 +5,7 @@ var annotated =
     [ "cloud7", "namespacecloud7.html", "namespacecloud7" ],
     [ "gateway", "namespacegateway.html", "namespacegateway" ],
     [ "hive", "namespacehive.html", "namespacehive" ],
+    [ "logcfg", "namespacelogcfg.html", "namespacelogcfg" ],
     [ "simple_dev", "namespacesimple__dev.html", "namespacesimple__dev" ],
     [ "simple_gw", "namespacesimple__gw.html", "namespacesimple__gw" ],
     [ "xbee", "namespacexbee.html", "namespacexbee" ],

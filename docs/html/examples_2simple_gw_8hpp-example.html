@@ -28,7 +28,7 @@
  <tr style="height: 56px;">
   <td style="padding-left: 0.5em;">
    <div id="projectname">DeviceHive C++ Framework
-   &#160;<span id="projectnumber">1.0</span>
+   &#160;<span id="projectnumber">1.1</span>
    </div>
    <div id="projectbrief">DeviceHive framework library for C++</div>
   </td>
@@ -225,6 +225,7 @@ $(document).ready(function(){initNavTree('examples_2simple_gw_8hpp-example.html'
 <div class="line">    {</div>
 <div class="line">        Base::start();</div>
 <div class="line">        asyncOpenSerial(0); <span class="comment">// ASAP</span></div>
+<div class="line">        asyncGetServerInfo();</div>
 <div class="line">    }</div>
 <div class="line"></div>
 <div class="line"><span class="comment"></span></div>
@@ -242,6 +243,19 @@ $(document).ready(function(){initNavTree('examples_2simple_gw_8hpp-example.html'
 <div class="line"></div>
 <div class="line"><span class="keyword">private</span>: <span class="comment">// ServerModuleREST</span></div>
 <div class="line"><span class="comment"></span></div>
+<div class="line"><span class="comment">    /// @copydoc cloud6::ServerModuleREST::onGotServerInfo()</span></div>
+<div class="line"><span class="comment"></span>    <span class="keyword">virtual</span> <span class="keywordtype">void</span> onGotServerInfo(boost::system::error_code err, <a name="_a7"></a><a class="code" href="classhive_1_1json_1_1_value.html" title="The JSON value.">json::Value</a> <span class="keyword">const</span>&amp; info)</div>
+<div class="line">    {</div>
+<div class="line">        ServerModuleREST::onGotServerInfo(err, info);</div>
+<div class="line"></div>
+<div class="line">        <span class="keywordflow">if</span> (!err)</div>
+<div class="line">        {</div>
+<div class="line">            <span class="comment">// update the last command time!</span></div>
+<div class="line">            m_lastCommandTimestamp = info[<span class="stringliteral">&quot;serverTimestamp&quot;</span>].<a name="a8"></a><a class="code" href="classhive_1_1json_1_1_value.html#a28e2e3930e88f62ae705aba30059264b" title="Get the value as STRING.">asString</a>();</div>
+<div class="line">        }</div>
+<div class="line">    }</div>
+<div class="line"></div>
+<div class="line"><span class="comment"></span></div>
 <div class="line"><span class="comment">    /// @copydoc cloud6::ServerModuleREST::onRegisterDevice()</span></div>
 <div class="line"><span class="comment"></span>    <span class="keyword">virtual</span> <span class="keywordtype">void</span> onRegisterDevice(boost::system::error_code err, <a class="code" href="namespacecloud6.html#a5cfc435a6fbc96b4c71912911798e0d4" title="The device shared pointer type.">cloud6::DevicePtr</a> device)</div>
 <div class="line">    {</div>
@@ -251,7 +265,7 @@ $(document).ready(function(){initNavTree('examples_2simple_gw_8hpp-example.html'
 <div class="line">        {</div>
 <div class="line">            m_deviceRegistered = <span class="keyword">true</span>;</div>
 <div class="line"></div>
-<div class="line">            asyncPollCommands(device);</div>
+<div class="line">            asyncPollCommands(device, m_lastCommandTimestamp);</div>
 <div class="line">            sendDelayedNotifications();</div>
 <div class="line">        }</div>
 <div class="line">    }</div>
@@ -267,7 +281,8 @@ $(document).ready(function(){initNavTree('examples_2simple_gw_8hpp-example.html'
 <div class="line">            <span class="keyword">typedef</span> std::vector&lt;cloud6::Command&gt;::const_iterator Iterator;</div>
 <div class="line">            <span class="keywordflow">for</span> (Iterator i = commands.begin(); i != commands.end(); ++i)</div>
 <div class="line">            {</div>
-<div class="line">                <a name="_a7"></a><a class="code" href="classcloud6_1_1_command.html" title="The command.">cloud6::Command</a> cmd = *i; <span class="comment">// copy to modify</span></div>
+<div class="line">                <a name="_a9"></a><a class="code" href="classcloud6_1_1_command.html" title="The command.">cloud6::Command</a> cmd = *i; <span class="comment">// copy to modify</span></div>
+<div class="line">                m_lastCommandTimestamp = cmd.<a name="a10"></a><a class="code" href="classcloud6_1_1_command.html#adba8f7570c35c016471c23c6ffe1d054" title="The command timestamp in UTC format.">timestamp</a>;</div>
 <div class="line">                <span class="keywordtype">bool</span> processed = <span class="keyword">true</span>;</div>
 <div class="line"></div>
 <div class="line">                <span class="keywordflow">try</span></div>
@@ -276,18 +291,18 @@ $(document).ready(function(){initNavTree('examples_2simple_gw_8hpp-example.html'
 <div class="line">                }</div>
 <div class="line">                <span class="keywordflow">catch</span> (std::exception <span class="keyword">const</span>&amp; ex)</div>
 <div class="line">                {</div>
-<div class="line">                    <a name="a8"></a><a class="code" href="log_8hpp.html#a36cc4f1f3e9031a86681c365f8ee6da5" title="Send a log message at ERROR level.">HIVELOG_ERROR</a>(m_log, <span class="stringliteral">&quot;handle command error: &quot;</span></div>
+<div class="line">                    <a name="a11"></a><a class="code" href="log_8hpp.html#a36cc4f1f3e9031a86681c365f8ee6da5" title="Send a log message at ERROR level.">HIVELOG_ERROR</a>(m_log, <span class="stringliteral">&quot;handle command error: &quot;</span></div>
 <div class="line">                        &lt;&lt; ex.what());</div>
 <div class="line"></div>
-<div class="line">                    cmd.<a name="a9"></a><a class="code" href="classcloud6_1_1_command.html#a4e531c185af848083db0808335a78168" title="Command status.">status</a> = <span class="stringliteral">&quot;Failed&quot;</span>;</div>
-<div class="line">                    cmd.<a name="a10"></a><a class="code" href="classcloud6_1_1_command.html#ade3e4dd136fe976f4d00476ead564457" title="Command result.">result</a> = ex.what();</div>
+<div class="line">                    cmd.<a name="a12"></a><a class="code" href="classcloud6_1_1_command.html#a4e531c185af848083db0808335a78168" title="Command status.">status</a> = <span class="stringliteral">&quot;Failed&quot;</span>;</div>
+<div class="line">                    cmd.<a name="a13"></a><a class="code" href="classcloud6_1_1_command.html#ade3e4dd136fe976f4d00476ead564457" title="Command result.">result</a> = ex.what();</div>
 <div class="line">                }</div>
 <div class="line"></div>
 <div class="line">                <span class="keywordflow">if</span> (processed)</div>
 <div class="line">                    asyncUpdateCommand(device, cmd);</div>
 <div class="line">            }</div>
 <div class="line"></div>
-<div class="line">            asyncPollCommands(device); <span class="comment">// start poll again</span></div>
+<div class="line">            asyncPollCommands(device, m_lastCommandTimestamp); <span class="comment">// start poll again</span></div>
 <div class="line">        }</div>
 <div class="line">    }</div>
 <div class="line"></div>
@@ -296,7 +311,7 @@ $(document).ready(function(){initNavTree('examples_2simple_gw_8hpp-example.html'
 <div class="line"><span class="comment"></span>    <span class="keywordtype">void</span> sendDelayedNotifications()</div>
 <div class="line">    {</div>
 <div class="line">        <span class="keyword">const</span> <span class="keywordtype">size_t</span> N = m_delayedNotifications.size();</div>
-<div class="line">        <a name="a11"></a><a class="code" href="log_8hpp.html#adce386f1611953d8e958a59dc76878f2" title="Send a log message at INFO level.">HIVELOG_INFO</a>(m_log, <span class="stringliteral">&quot;sending &quot;</span> &lt;&lt; N</div>
+<div class="line">        <a name="a14"></a><a class="code" href="log_8hpp.html#adce386f1611953d8e958a59dc76878f2" title="Send a log message at INFO level.">HIVELOG_INFO</a>(m_log, <span class="stringliteral">&quot;sending &quot;</span> &lt;&lt; N</div>
 <div class="line">            &lt;&lt; <span class="stringliteral">&quot; delayed notifications&quot;</span>);</div>
 <div class="line"></div>
 <div class="line">        <span class="keywordflow">for</span> (<span class="keywordtype">size_t</span> i = 0; i &lt; N; ++i)</div>
@@ -328,10 +343,10 @@ $(document).ready(function(){initNavTree('examples_2simple_gw_8hpp-example.html'
 <div class="line"><span class="comment">    /// @brief Send gateway registration request.</span></div>
 <div class="line"><span class="comment"></span>    <span class="keywordtype">void</span> sendGatewayRegistrationRequest()</div>
 <div class="line">    {</div>
-<div class="line">        <a name="_a12"></a><a class="code" href="classhive_1_1json_1_1_value.html" title="The JSON value.">json::Value</a> data;</div>
+<div class="line">        <a class="code" href="classhive_1_1json_1_1_value.html" title="The JSON value.">json::Value</a> data;</div>
 <div class="line">        data[<span class="stringliteral">&quot;data&quot;</span>] = <a class="code" href="classhive_1_1json_1_1_value.html" title="The JSON value.">json::Value</a>();</div>
 <div class="line"></div>
-<div class="line">        sendGatewayMessage(<a name="a13"></a><a class="code" href="namespacegateway.html#a91a5c9f7bb1a8c5152e0e25e56718621af22bd4afe7b3e07afe09ec81de99388f" title="The registration request.">gateway::INTENT_REGISTRATION_REQUEST</a>, data);</div>
+<div class="line">        sendGatewayMessage(<a name="a15"></a><a class="code" href="namespacegateway.html#a91a5c9f7bb1a8c5152e0e25e56718621af22bd4afe7b3e07afe09ec81de99388f" title="The registration request.">gateway::INTENT_REGISTRATION_REQUEST</a>, data);</div>
 <div class="line">    }</div>
 <div class="line"></div>
 <div class="line"><span class="comment"></span></div>
@@ -342,15 +357,15 @@ $(document).ready(function(){initNavTree('examples_2simple_gw_8hpp-example.html'
 <div class="line"><span class="comment">    */</span></div>
 <div class="line">    <span class="keywordtype">bool</span> sendGatewayCommand(<a class="code" href="classcloud6_1_1_command.html" title="The command.">cloud6::Command</a> <span class="keyword">const</span>&amp; cmd)</div>
 <div class="line">    {</div>
-<div class="line">        <span class="keyword">const</span> <span class="keywordtype">int</span> intent = m_gw.findCommandIntentByName(cmd.<a name="a14"></a><a class="code" href="classcloud6_1_1_command.html#a9a2326f35466e54c36c070829245c557" title="The command name.">name</a>);</div>
+<div class="line">        <span class="keyword">const</span> <span class="keywordtype">int</span> intent = m_gw.findCommandIntentByName(cmd.<a name="a16"></a><a class="code" href="classcloud6_1_1_command.html#a9a2326f35466e54c36c070829245c557" title="The command name.">name</a>);</div>
 <div class="line">        <span class="keywordflow">if</span> (0 &lt;= intent)</div>
 <div class="line">        {</div>
 <div class="line">            <a class="code" href="log_8hpp.html#adce386f1611953d8e958a59dc76878f2" title="Send a log message at INFO level.">HIVELOG_INFO</a>(m_log, <span class="stringliteral">&quot;command: \&quot;&quot;</span> &lt;&lt; cmd.<a class="code" href="classcloud6_1_1_command.html#a9a2326f35466e54c36c070829245c557" title="The command name.">name</a></div>
 <div class="line">                &lt;&lt; <span class="stringliteral">&quot;\&quot; mapped to #&quot;</span> &lt;&lt; intent &lt;&lt; <span class="stringliteral">&quot; intent&quot;</span>);</div>
 <div class="line"></div>
 <div class="line">            <a class="code" href="classhive_1_1json_1_1_value.html" title="The JSON value.">json::Value</a> data;</div>
-<div class="line">            data[<span class="stringliteral">&quot;id&quot;</span>] = cmd.<a name="a15"></a><a class="code" href="classcloud6_1_1_command.html#a67ad6af156c80ad0366da425d781a8d0" title="The command identifier.">id</a>;</div>
-<div class="line">            data[<span class="stringliteral">&quot;parameters&quot;</span>] = cmd.<a name="a16"></a><a class="code" href="classcloud6_1_1_command.html#a316a73d7aa441b3f406b92c4cfa81dd8" title="The command parameters.">params</a>;</div>
+<div class="line">            data[<span class="stringliteral">&quot;id&quot;</span>] = cmd.<a name="a17"></a><a class="code" href="classcloud6_1_1_command.html#a67ad6af156c80ad0366da425d781a8d0" title="The command identifier.">id</a>;</div>
+<div class="line">            data[<span class="stringliteral">&quot;parameters&quot;</span>] = cmd.<a name="a18"></a><a class="code" href="classcloud6_1_1_command.html#a316a73d7aa441b3f406b92c4cfa81dd8" title="The command parameters.">params</a>;</div>
 <div class="line">            <span class="keywordflow">if</span> (!sendGatewayMessage(intent, data))</div>
 <div class="line">                <span class="keywordflow">throw</span> std::runtime_error(<span class="stringliteral">&quot;invalid command format&quot;</span>);</div>
 <div class="line">            <span class="keywordflow">return</span> <span class="keyword">false</span>; <span class="comment">// device will report command result later!</span></div>
@@ -378,7 +393,7 @@ $(document).ready(function(){initNavTree('examples_2simple_gw_8hpp-example.html'
 <div class="line">            <span class="keywordflow">return</span> <span class="keyword">true</span>;</div>
 <div class="line">        }</div>
 <div class="line">        <span class="keywordflow">else</span></div>
-<div class="line">            <a name="a17"></a><a class="code" href="log_8hpp.html#aeafea17d7e00f3418b9a129c64964e04" title="Send a log string at WARN level.">HIVELOG_WARN_STR</a>(m_log, <span class="stringliteral">&quot;cannot convert frame to binary format&quot;</span>);</div>
+<div class="line">            <a name="a19"></a><a class="code" href="log_8hpp.html#aeafea17d7e00f3418b9a129c64964e04" title="Send a log string at WARN level.">HIVELOG_WARN_STR</a>(m_log, <span class="stringliteral">&quot;cannot convert frame to binary format&quot;</span>);</div>
 <div class="line"></div>
 <div class="line">        <span class="keywordflow">return</span> <span class="keyword">false</span>;</div>
 <div class="line">    }</div>
@@ -393,14 +408,14 @@ $(document).ready(function(){initNavTree('examples_2simple_gw_8hpp-example.html'
 <div class="line">    {</div>
 <div class="line">        <span class="keywordflow">if</span> (!err &amp;&amp; frame)</div>
 <div class="line">        {</div>
-<div class="line">            <a name="a18"></a><a class="code" href="log_8hpp.html#a13680bab2a3a06fa54539daff70ff298" title="Send a log message at DEBUG level.">HIVELOG_DEBUG</a>(m_log, <span class="stringliteral">&quot;frame successfully sent #&quot;</span></div>
+<div class="line">            <a name="a20"></a><a class="code" href="log_8hpp.html#a13680bab2a3a06fa54539daff70ff298" title="Send a log message at DEBUG level.">HIVELOG_DEBUG</a>(m_log, <span class="stringliteral">&quot;frame successfully sent #&quot;</span></div>
 <div class="line">                &lt;&lt; frame-&gt;getIntent() &lt;&lt; <span class="stringliteral">&quot;: [&quot;</span></div>
 <div class="line">                &lt;&lt; m_gw_api-&gt;hexdump(frame) &lt;&lt; <span class="stringliteral">&quot;], &quot;</span></div>
 <div class="line">                &lt;&lt; frame-&gt;size() &lt;&lt; <span class="stringliteral">&quot; bytes&quot;</span>);</div>
 <div class="line">        }</div>
 <div class="line">        <span class="keywordflow">else</span> <span class="keywordflow">if</span> (err == boost::asio::error::operation_aborted)</div>
 <div class="line">        {</div>
-<div class="line">            <a name="a19"></a><a class="code" href="log_8hpp.html#afc380ebe7c003adb3bc83658ceed35ad" title="Send a log string at DEBUG level.">HIVELOG_DEBUG_STR</a>(m_log, <span class="stringliteral">&quot;TX operation cancelled&quot;</span>);</div>
+<div class="line">            <a name="a21"></a><a class="code" href="log_8hpp.html#afc380ebe7c003adb3bc83658ceed35ad" title="Send a log string at DEBUG level.">HIVELOG_DEBUG_STR</a>(m_log, <span class="stringliteral">&quot;TX operation cancelled&quot;</span>);</div>
 <div class="line">        }</div>
 <div class="line">        <span class="keywordflow">else</span></div>
 <div class="line">        {</div>
@@ -471,17 +486,17 @@ $(document).ready(function(){initNavTree('examples_2simple_gw_8hpp-example.html'
 <div class="line">    <span class="keywordtype">void</span> createDevice(<a class="code" href="classhive_1_1json_1_1_value.html" title="The JSON value.">json::Value</a> <span class="keyword">const</span>&amp; jdev)</div>
 <div class="line">    {</div>
 <div class="line">        { <span class="comment">// create device</span></div>
-<div class="line">            <span class="keyword">const</span> <a class="code" href="namespacehive.html#afbeda3fd1bdc8c37d01bdf9f5c8274ff" title="The string.">String</a> <span class="keywordtype">id</span> = jdev[<span class="stringliteral">&quot;id&quot;</span>].<a name="a20"></a><a class="code" href="classhive_1_1json_1_1_value.html#a28e2e3930e88f62ae705aba30059264b" title="Get the value as STRING.">asString</a>();</div>
+<div class="line">            <span class="keyword">const</span> <a class="code" href="namespacehive.html#afbeda3fd1bdc8c37d01bdf9f5c8274ff" title="The string.">String</a> <span class="keywordtype">id</span> = jdev[<span class="stringliteral">&quot;id&quot;</span>].<a class="code" href="classhive_1_1json_1_1_value.html#a28e2e3930e88f62ae705aba30059264b" title="Get the value as STRING.">asString</a>();</div>
 <div class="line">            <span class="keyword">const</span> <a class="code" href="namespacehive.html#afbeda3fd1bdc8c37d01bdf9f5c8274ff" title="The string.">String</a> key = jdev[<span class="stringliteral">&quot;key&quot;</span>].<a class="code" href="classhive_1_1json_1_1_value.html#a28e2e3930e88f62ae705aba30059264b" title="Get the value as STRING.">asString</a>();</div>
 <div class="line">            <span class="keyword">const</span> <a class="code" href="namespacehive.html#afbeda3fd1bdc8c37d01bdf9f5c8274ff" title="The string.">String</a> name = jdev[<span class="stringliteral">&quot;name&quot;</span>].<a class="code" href="classhive_1_1json_1_1_value.html#a28e2e3930e88f62ae705aba30059264b" title="Get the value as STRING.">asString</a>();</div>
 <div class="line"></div>
-<div class="line">            <a class="code" href="namespacecloud6.html#a05192a831a20c289602256da62acdeb6" title="The network shared pointer type.">cloud6::NetworkPtr</a> network = <a name="a21"></a><a class="code" href="classcloud6_1_1_network.html#aa1afeda7b7096504974c5d4a07e3d989" title="The factory method.">cloud6::Network::create</a>(</div>
+<div class="line">            <a class="code" href="namespacecloud6.html#a05192a831a20c289602256da62acdeb6" title="The network shared pointer type.">cloud6::NetworkPtr</a> network = <a name="a22"></a><a class="code" href="classcloud6_1_1_network.html#aa1afeda7b7096504974c5d4a07e3d989" title="The factory method.">cloud6::Network::create</a>(</div>
 <div class="line">                m_networkName, m_networkKey, m_networkDesc);</div>
 <div class="line"></div>
-<div class="line">            <a class="code" href="classcloud6_1_1_device.html#a0afa7085d8f05f7c1e43f4cb929310df" title="The device class shared pointer type.">cloud6::Device::ClassPtr</a> deviceClass = <a name="a22"></a><a class="code" href="classcloud6_1_1_device_1_1_class.html#a5a0b772eae6af54cf28b04e2e550e76c" title="The factory method.">cloud6::Device::Class::create</a>(<span class="stringliteral">&quot;&quot;</span>, <span class="stringliteral">&quot;&quot;</span>, <span class="keyword">false</span>, <a class="code" href="namespacesimple__gw.html#a0411cd49bb5b71852cecd93bcbf0ca2da6ca50011e1c6f39397f32634d03589e5">DEVICE_OFFLINE_TIMEOUT</a>);</div>
-<div class="line">            <a name="a23"></a><a class="code" href="classcloud6_1_1_serializer.html#a0afa5d94198c2adf67c0c3a86a27b601" title="Update device class from the JSON value.">cloud6::Serializer::json2deviceClass</a>(jdev[<span class="stringliteral">&quot;deviceClass&quot;</span>], deviceClass);</div>
+<div class="line">            <a class="code" href="classcloud6_1_1_device.html#a0afa7085d8f05f7c1e43f4cb929310df" title="The device class shared pointer type.">cloud6::Device::ClassPtr</a> deviceClass = <a name="a23"></a><a class="code" href="classcloud6_1_1_device_1_1_class.html#a5a0b772eae6af54cf28b04e2e550e76c" title="The factory method.">cloud6::Device::Class::create</a>(<span class="stringliteral">&quot;&quot;</span>, <span class="stringliteral">&quot;&quot;</span>, <span class="keyword">false</span>, <a class="code" href="namespacesimple__gw.html#a0411cd49bb5b71852cecd93bcbf0ca2da6ca50011e1c6f39397f32634d03589e5">DEVICE_OFFLINE_TIMEOUT</a>);</div>
+<div class="line">            <a name="a24"></a><a class="code" href="classcloud6_1_1_serializer.html#a0afa5d94198c2adf67c0c3a86a27b601" title="Update device class from the JSON value.">cloud6::Serializer::json2deviceClass</a>(jdev[<span class="stringliteral">&quot;deviceClass&quot;</span>], deviceClass);</div>
 <div class="line"></div>
-<div class="line">            m_device = <a name="a24"></a><a class="code" href="classcloud6_1_1_device.html#add7ab61f5ae2f334405efcd41ca1c3c4" title="The factory method.">cloud6::Device::create</a>(<span class="keywordtype">id</span>, name, key, deviceClass, network);</div>
+<div class="line">            m_device = <a name="a25"></a><a class="code" href="classcloud6_1_1_device.html#add7ab61f5ae2f334405efcd41ca1c3c4" title="The factory method.">cloud6::Device::create</a>(<span class="keywordtype">id</span>, name, key, deviceClass, network);</div>
 <div class="line">            m_device-&gt;status = <span class="stringliteral">&quot;Online&quot;</span>;</div>
 <div class="line"></div>
 <div class="line">            m_delayedNotifications.clear();</div>
@@ -490,7 +505,7 @@ $(document).ready(function(){initNavTree('examples_2simple_gw_8hpp-example.html'
 <div class="line"></div>
 <div class="line">        { <span class="comment">// update equipment</span></div>
 <div class="line">            <a class="code" href="classhive_1_1json_1_1_value.html" title="The JSON value.">json::Value</a> <span class="keyword">const</span>&amp; equipment = jdev[<span class="stringliteral">&quot;equipment&quot;</span>];</div>
-<div class="line">            <span class="keyword">const</span> <span class="keywordtype">size_t</span> N = equipment.<a name="a25"></a><a class="code" href="classhive_1_1json_1_1_value.html#aac782da1f912bceb5d8ad00c8dc892ac" title="Get the number of elements in ARRAY or OBJECT.">size</a>();</div>
+<div class="line">            <span class="keyword">const</span> <span class="keywordtype">size_t</span> N = equipment.<a name="a26"></a><a class="code" href="classhive_1_1json_1_1_value.html#aac782da1f912bceb5d8ad00c8dc892ac" title="Get the number of elements in ARRAY or OBJECT.">size</a>();</div>
 <div class="line">            <span class="keywordflow">for</span> (<span class="keywordtype">size_t</span> i = 0; i &lt; N; ++i)</div>
 <div class="line">            {</div>
 <div class="line">                <a class="code" href="classhive_1_1json_1_1_value.html" title="The JSON value.">json::Value</a> <span class="keyword">const</span>&amp; eq = equipment[i];</div>
@@ -499,7 +514,7 @@ $(document).ready(function(){initNavTree('examples_2simple_gw_8hpp-example.html'
 <div class="line">                <span class="keyword">const</span> <a class="code" href="namespacehive.html#afbeda3fd1bdc8c37d01bdf9f5c8274ff" title="The string.">String</a> name = eq[<span class="stringliteral">&quot;name&quot;</span>].<a class="code" href="classhive_1_1json_1_1_value.html#a28e2e3930e88f62ae705aba30059264b" title="Get the value as STRING.">asString</a>();</div>
 <div class="line">                <span class="keyword">const</span> <a class="code" href="namespacehive.html#afbeda3fd1bdc8c37d01bdf9f5c8274ff" title="The string.">String</a> type = eq[<span class="stringliteral">&quot;type&quot;</span>].<a class="code" href="classhive_1_1json_1_1_value.html#a28e2e3930e88f62ae705aba30059264b" title="Get the value as STRING.">asString</a>();</div>
 <div class="line"></div>
-<div class="line">                m_device-&gt;equipment.push_back(<a name="a26"></a><a class="code" href="classcloud6_1_1_equipment.html#a1a6de3f200227f8a385bdfd743e4bb69" title="The factory method.">cloud6::Equipment::create</a>(<span class="keywordtype">id</span>, name, type));</div>
+<div class="line">                m_device-&gt;equipment.push_back(<a name="a27"></a><a class="code" href="classcloud6_1_1_equipment.html#a1a6de3f200227f8a385bdfd743e4bb69" title="The factory method.">cloud6::Equipment::create</a>(<span class="keywordtype">id</span>, name, type));</div>
 <div class="line">            }</div>
 <div class="line">        }</div>
 <div class="line">    }</div>
@@ -514,14 +529,14 @@ $(document).ready(function(){initNavTree('examples_2simple_gw_8hpp-example.html'
 <div class="line">    {</div>
 <div class="line">        <a class="code" href="log_8hpp.html#adce386f1611953d8e958a59dc76878f2" title="Send a log message at INFO level.">HIVELOG_INFO</a>(m_log, <span class="stringliteral">&quot;process intent #&quot;</span> &lt;&lt; intent &lt;&lt; <span class="stringliteral">&quot; data: &quot;</span> &lt;&lt; data &lt;&lt; <span class="stringliteral">&quot;\n&quot;</span>);</div>
 <div class="line"></div>
-<div class="line">        <span class="keywordflow">if</span> (intent == <a name="a27"></a><a class="code" href="namespacegateway.html#a91a5c9f7bb1a8c5152e0e25e56718621a36ade28be81adc261fdc118cb2cd5867" title="The registration response.">gateway::INTENT_REGISTRATION_RESPONSE</a>)</div>
+<div class="line">        <span class="keywordflow">if</span> (intent == <a name="a28"></a><a class="code" href="namespacegateway.html#a91a5c9f7bb1a8c5152e0e25e56718621a36ade28be81adc261fdc118cb2cd5867" title="The registration response.">gateway::INTENT_REGISTRATION_RESPONSE</a>)</div>
 <div class="line">        {</div>
 <div class="line">            m_gw.handleRegisterResponse(data);</div>
 <div class="line">            createDevice(data);</div>
 <div class="line">            asyncRegisterDevice(m_device);</div>
 <div class="line">        }</div>
 <div class="line"></div>
-<div class="line">        <span class="keywordflow">else</span> <span class="keywordflow">if</span> (intent == <a name="a28"></a><a class="code" href="namespacegateway.html#a91a5c9f7bb1a8c5152e0e25e56718621a73b41f4bf024a09670cb115ee4ec6626" title="The registration response (JSON format).">gateway::INTENT_REGISTRATION2_RESPONSE</a>)</div>
+<div class="line">        <span class="keywordflow">else</span> <span class="keywordflow">if</span> (intent == <a name="a29"></a><a class="code" href="namespacegateway.html#a91a5c9f7bb1a8c5152e0e25e56718621a73b41f4bf024a09670cb115ee4ec6626" title="The registration response (JSON format).">gateway::INTENT_REGISTRATION2_RESPONSE</a>)</div>
 <div class="line">        {</div>
 <div class="line">            <a class="code" href="classhive_1_1json_1_1_value.html" title="The JSON value.">json::Value</a> jdev = json::fromStr(data[<span class="stringliteral">&quot;json&quot;</span>].asString());</div>
 <div class="line">            m_gw.handleRegister2Response(jdev);</div>
@@ -529,14 +544,14 @@ $(document).ready(function(){initNavTree('examples_2simple_gw_8hpp-example.html'
 <div class="line">            asyncRegisterDevice(m_device);</div>
 <div class="line">        }</div>
 <div class="line"></div>
-<div class="line">        <span class="keywordflow">else</span> <span class="keywordflow">if</span> (intent == <a name="a29"></a><a class="code" href="namespacegateway.html#a91a5c9f7bb1a8c5152e0e25e56718621a0e0ca067e90039685ac1ce62dc6bb0fe" title="The command result response.">gateway::INTENT_COMMAND_RESULT_RESPONSE</a>)</div>
+<div class="line">        <span class="keywordflow">else</span> <span class="keywordflow">if</span> (intent == <a name="a30"></a><a class="code" href="namespacegateway.html#a91a5c9f7bb1a8c5152e0e25e56718621a0e0ca067e90039685ac1ce62dc6bb0fe" title="The command result response.">gateway::INTENT_COMMAND_RESULT_RESPONSE</a>)</div>
 <div class="line">        {</div>
 <div class="line">            <span class="keywordflow">if</span> (m_device)</div>
 <div class="line">            {</div>
 <div class="line">                <a class="code" href="log_8hpp.html#a13680bab2a3a06fa54539daff70ff298" title="Send a log message at DEBUG level.">HIVELOG_DEBUG</a>(m_log, <span class="stringliteral">&quot;got command result&quot;</span>);</div>
 <div class="line"></div>
 <div class="line">                <a class="code" href="classcloud6_1_1_command.html" title="The command.">cloud6::Command</a> cmd;</div>
-<div class="line">                cmd.<a class="code" href="classcloud6_1_1_command.html#a67ad6af156c80ad0366da425d781a8d0" title="The command identifier.">id</a> = data[<span class="stringliteral">&quot;id&quot;</span>].<a name="a30"></a><a class="code" href="classhive_1_1json_1_1_value.html#a606273a7f81494602eb25f8372fb8e4e" title="Get the value as unsigned INTEGER (64 bits). ">asUInt</a>();</div>
+<div class="line">                cmd.<a class="code" href="classcloud6_1_1_command.html#a67ad6af156c80ad0366da425d781a8d0" title="The command identifier.">id</a> = data[<span class="stringliteral">&quot;id&quot;</span>].<a name="a31"></a><a class="code" href="classhive_1_1json_1_1_value.html#a606273a7f81494602eb25f8372fb8e4e" title="Get the value as unsigned INTEGER (64 bits). ">asUInt</a>();</div>
 <div class="line">                cmd.<a class="code" href="classcloud6_1_1_command.html#a4e531c185af848083db0808335a78168" title="Command status.">status</a> = data[<span class="stringliteral">&quot;status&quot;</span>].<a class="code" href="classhive_1_1json_1_1_value.html#a28e2e3930e88f62ae705aba30059264b" title="Get the value as STRING.">asString</a>();</div>
 <div class="line">                cmd.<a class="code" href="classcloud6_1_1_command.html#ade3e4dd136fe976f4d00476ead564457" title="Command result.">result</a> = data[<span class="stringliteral">&quot;result&quot;</span>].<a class="code" href="classhive_1_1json_1_1_value.html#a28e2e3930e88f62ae705aba30059264b" title="Get the value as STRING.">asString</a>();</div>
 <div class="line"></div>
@@ -546,7 +561,7 @@ $(document).ready(function(){initNavTree('examples_2simple_gw_8hpp-example.html'
 <div class="line">                <a class="code" href="log_8hpp.html#aeafea17d7e00f3418b9a129c64964e04" title="Send a log string at WARN level.">HIVELOG_WARN_STR</a>(m_log, <span class="stringliteral">&quot;got command result before registration, ignored&quot;</span>);</div>
 <div class="line">        }</div>
 <div class="line"></div>
-<div class="line">        <span class="keywordflow">else</span> <span class="keywordflow">if</span> (intent &gt;= <a name="a31"></a><a class="code" href="namespacegateway.html#a91a5c9f7bb1a8c5152e0e25e56718621a20a3a4e9a1189dddc40dbe3d5324f0f9" title="The minimum user intent.">gateway::INTENT_USER</a>)</div>
+<div class="line">        <span class="keywordflow">else</span> <span class="keywordflow">if</span> (intent &gt;= <a name="a32"></a><a class="code" href="namespacegateway.html#a91a5c9f7bb1a8c5152e0e25e56718621a20a3a4e9a1189dddc40dbe3d5324f0f9" title="The minimum user intent.">gateway::INTENT_USER</a>)</div>
 <div class="line">        {</div>
 <div class="line">            <span class="keywordflow">if</span> (m_device)</div>
 <div class="line">            {</div>
@@ -558,7 +573,7 @@ $(document).ready(function(){initNavTree('examples_2simple_gw_8hpp-example.html'
 <div class="line">                    <span class="keywordflow">if</span> (m_deviceRegistered)</div>
 <div class="line">                    {</div>
 <div class="line">                        asyncInsertNotification(m_device,</div>
-<div class="line">                            <a name="_a32"></a><a class="code" href="classcloud6_1_1_notification.html" title="The notification.">cloud6::Notification</a>(name, data));</div>
+<div class="line">                            <a name="_a33"></a><a class="code" href="classcloud6_1_1_notification.html" title="The notification.">cloud6::Notification</a>(name, data));</div>
 <div class="line">                    }</div>
 <div class="line">                    <span class="keywordflow">else</span></div>
 <div class="line">                    {</div>
@@ -567,7 +582,7 @@ $(document).ready(function(){initNavTree('examples_2simple_gw_8hpp-example.html'
 <div class="line">                    }</div>
 <div class="line">                }</div>
 <div class="line">                <span class="keywordflow">else</span></div>
-<div class="line">                    <a name="a33"></a><a class="code" href="log_8hpp.html#a541c7b60a0b4ad1d70d8dba8d5f946b8" title="Send a log message at WARN level.">HIVELOG_WARN</a>(m_log, <span class="stringliteral">&quot;unknown notification: &quot;</span> &lt;&lt; intent &lt;&lt; <span class="stringliteral">&quot;, ignored&quot;</span>);</div>
+<div class="line">                    <a name="a34"></a><a class="code" href="log_8hpp.html#a541c7b60a0b4ad1d70d8dba8d5f946b8" title="Send a log message at WARN level.">HIVELOG_WARN</a>(m_log, <span class="stringliteral">&quot;unknown notification: &quot;</span> &lt;&lt; intent &lt;&lt; <span class="stringliteral">&quot;, ignored&quot;</span>);</div>
 <div class="line">            }</div>
 <div class="line">            <span class="keywordflow">else</span></div>
 <div class="line">                <a class="code" href="log_8hpp.html#aeafea17d7e00f3418b9a129c64964e04" title="Send a log string at WARN level.">HIVELOG_WARN_STR</a>(m_log, <span class="stringliteral">&quot;got notification before registration, ignored&quot;</span>);</div>
@@ -583,13 +598,14 @@ $(document).ready(function(){initNavTree('examples_2simple_gw_8hpp-example.html'
 <div class="line"><span class="comment"></span>    <a class="code" href="namespacehive.html#afbeda3fd1bdc8c37d01bdf9f5c8274ff" title="The string.">String</a> m_networkDesc; <span class="comment">///&lt; @brief The network description.</span></div>
 <div class="line"><span class="comment"></span></div>
 <div class="line"><span class="keyword">private</span>:</div>
-<div class="line">    <span class="keyword">typedef</span> <a name="_a34"></a><a class="code" href="classgateway_1_1_a_p_i.html" title="The gateway API.">gateway::API&lt;boost::asio::serial_port&gt;</a> GatewayAPI; <span class="comment">///&lt; @brief The gateway %API type.</span></div>
+<div class="line">    <span class="keyword">typedef</span> <a name="_a35"></a><a class="code" href="classgateway_1_1_a_p_i.html" title="The gateway API.">gateway::API&lt;boost::asio::serial_port&gt;</a> GatewayAPI; <span class="comment">///&lt; @brief The gateway %API type.</span></div>
 <div class="line"><span class="comment"></span>    GatewayAPI::SharedPtr m_gw_api; <span class="comment">///&lt; @brief The gateway %API.</span></div>
-<div class="line"><span class="comment"></span>    <a name="_a35"></a><a class="code" href="classgateway_1_1_engine.html" title="The gateway engine.">gateway::Engine</a> m_gw; <span class="comment">///&lt; @brief The gateway engine.</span></div>
+<div class="line"><span class="comment"></span>    <a name="_a36"></a><a class="code" href="classgateway_1_1_engine.html" title="The gateway engine.">gateway::Engine</a> m_gw; <span class="comment">///&lt; @brief The gateway engine.</span></div>
 <div class="line"><span class="comment"></span></div>
 <div class="line"><span class="keyword">private</span>:</div>
 <div class="line">    <a class="code" href="namespacecloud6.html#a5cfc435a6fbc96b4c71912911798e0d4" title="The device shared pointer type.">cloud6::DevicePtr</a> m_device; <span class="comment">///&lt; @brief The device.</span></div>
 <div class="line"><span class="comment"></span>    <span class="keywordtype">bool</span> m_deviceRegistered; <span class="comment">///&lt; @brief The DeviceHive cloud &quot;registered&quot; flag.</span></div>
+<div class="line"><span class="comment"></span>    <a class="code" href="namespacehive.html#afbeda3fd1bdc8c37d01bdf9f5c8274ff" title="The string.">String</a> m_lastCommandTimestamp; <span class="comment">///&lt; @brief The timestamp of the last received command.</span></div>
 <div class="line"><span class="comment"></span>    std::vector&lt;cloud6::Notification&gt; m_delayedNotifications; <span class="comment">///&lt; @brief The list of delayed notification.</span></div>
 <div class="line"><span class="comment"></span>};</div>
 <div class="line"></div>
@@ -600,7 +616,7 @@ $(document).ready(function(){initNavTree('examples_2simple_gw_8hpp-example.html'
 <div class="line"><span class="comment">*/</span></div>
 <div class="line"><span class="keyword">class </span>ApplicationWS:</div>
 <div class="line">    <span class="keyword">public</span> <a class="code" href="classbasic__app_1_1_application.html" title="The application skeleton.">basic_app::Application</a>,</div>
-<div class="line">    <span class="keyword">public</span> <a name="_a36"></a><a class="code" href="classcloud7_1_1_server_module_w_s.html" title="The WebSocket Server API submodule.">cloud7::ServerModuleWS</a>,</div>
+<div class="line">    <span class="keyword">public</span> <a name="_a37"></a><a class="code" href="classcloud7_1_1_server_module_w_s.html" title="The WebSocket Server API submodule.">cloud7::ServerModuleWS</a>,</div>
 <div class="line">    <span class="keyword">public</span> <a class="code" href="classgateway_1_1_serial_module.html" title="The Serial submodule.">gateway::SerialModule</a></div>
 <div class="line">{</div>
 <div class="line">    <span class="keyword">typedef</span> <a class="code" href="classbasic__app_1_1_application.html" title="The application skeleton.">basic_app::Application</a> Base; <span class="comment">///&lt; @brief The base type.</span></div>
@@ -794,7 +810,7 @@ $(document).ready(function(){initNavTree('examples_2simple_gw_8hpp-example.html'
 <div class="line">            <span class="keywordflow">if</span> (!m_device || deviceId != m_device-&gt;id)</div>
 <div class="line">                <span class="keywordflow">throw</span> std::runtime_error(<span class="stringliteral">&quot;unknown device identifier&quot;</span>);</div>
 <div class="line"></div>
-<div class="line">            <a class="code" href="classcloud6_1_1_command.html" title="The command.">cloud7::Command</a> cmd = <a name="a37"></a><a class="code" href="classcloud6_1_1_serializer.html#a4dfd79096730685fefd301ef2d3bba90" title="Convert the JSON value to the command.">cloud7::Serializer::json2cmd</a>(params[<span class="stringliteral">&quot;command&quot;</span>]);</div>
+<div class="line">            <a class="code" href="classcloud6_1_1_command.html" title="The command.">cloud7::Command</a> cmd = <a name="a38"></a><a class="code" href="classcloud6_1_1_serializer.html#a4dfd79096730685fefd301ef2d3bba90" title="Convert the JSON value to the command.">cloud7::Serializer::json2cmd</a>(params[<span class="stringliteral">&quot;command&quot;</span>]);</div>
 <div class="line">            <span class="keywordflow">if</span> (m_serial.is_open())</div>
 <div class="line">            {</div>
 <div class="line">                <span class="keywordtype">bool</span> processed = <span class="keyword">true</span>;</div>
@@ -1040,7 +1056,7 @@ $(document).ready(function(){initNavTree('examples_2simple_gw_8hpp-example.html'
 <div class="line">            <a class="code" href="namespacehive.html#afbeda3fd1bdc8c37d01bdf9f5c8274ff" title="The string.">String</a> name = jdev[<span class="stringliteral">&quot;name&quot;</span>].<a class="code" href="classhive_1_1json_1_1_value.html#a28e2e3930e88f62ae705aba30059264b" title="Get the value as STRING.">asString</a>();</div>
 <div class="line"></div>
 <div class="line">            <span class="comment">// TODO: get network from command line</span></div>
-<div class="line">            <a name="a38"></a><a class="code" href="namespacecloud6.html#a05192a831a20c289602256da62acdeb6" title="The network shared pointer type.">cloud7::NetworkPtr</a> network = <a class="code" href="classcloud6_1_1_network.html#aa1afeda7b7096504974c5d4a07e3d989" title="The factory method.">cloud7::Network::create</a>(</div>
+<div class="line">            <a name="a39"></a><a class="code" href="namespacecloud6.html#a05192a831a20c289602256da62acdeb6" title="The network shared pointer type.">cloud7::NetworkPtr</a> network = <a class="code" href="classcloud6_1_1_network.html#aa1afeda7b7096504974c5d4a07e3d989" title="The factory method.">cloud7::Network::create</a>(</div>
 <div class="line">                m_networkName, m_networkKey, m_networkDesc);</div>
 <div class="line"></div>
 <div class="line">            <a class="code" href="classcloud6_1_1_device.html#a0afa7085d8f05f7c1e43f4cb929310df" title="The device class shared pointer type.">cloud7::Device::ClassPtr</a> deviceClass = <a class="code" href="classcloud6_1_1_device_1_1_class.html#a5a0b772eae6af54cf28b04e2e550e76c" title="The factory method.">cloud7::Device::Class::create</a>(<span class="stringliteral">&quot;&quot;</span>, <span class="stringliteral">&quot;&quot;</span>, <span class="keyword">false</span>, <a class="code" href="namespacesimple__gw.html#a0411cd49bb5b71852cecd93bcbf0ca2da6ca50011e1c6f39397f32634d03589e5">DEVICE_OFFLINE_TIMEOUT</a>);</div>
@@ -1158,7 +1174,7 @@ $(document).ready(function(){initNavTree('examples_2simple_gw_8hpp-example.html'
 <div class="line"><span class="comment"></span>    <a class="code" href="classgateway_1_1_engine.html" title="The gateway engine.">gateway::Engine</a> m_gw; <span class="comment">///&lt; @brief The gateway engine.</span></div>
 <div class="line"><span class="comment"></span></div>
 <div class="line"><span class="keyword">private</span>:</div>
-<div class="line">    <a name="a39"></a><a class="code" href="namespacecloud6.html#a5cfc435a6fbc96b4c71912911798e0d4" title="The device shared pointer type.">cloud7::DevicePtr</a> m_device; <span class="comment">///&lt; @brief The device.</span></div>
+<div class="line">    <a name="a40"></a><a class="code" href="namespacecloud6.html#a5cfc435a6fbc96b4c71912911798e0d4" title="The device shared pointer type.">cloud7::DevicePtr</a> m_device; <span class="comment">///&lt; @brief The device.</span></div>
 <div class="line"><span class="comment"></span>    <span class="keywordtype">bool</span> m_deviceRegistered; <span class="comment">///&lt; @brief The DeviceHive cloud &quot;registered&quot; flag.</span></div>
 <div class="line"><span class="comment"></span>    std::vector&lt;cloud7::Notification&gt; m_delayedNotifications; <span class="comment">///&lt; @brief The list of delayed notification.</span></div>
 <div class="line"><span class="comment"></span>    std::vector&lt;cloud7::Command&gt; m_delayedCommandResults; <span class="comment">///&lt; @brief The list of delayed command results.</span></div>
@@ -1174,22 +1190,22 @@ $(document).ready(function(){initNavTree('examples_2simple_gw_8hpp-example.html'
 <div class="line"><span class="comment">@param[in] argv The command line arguments.</span></div>
 <div class="line"><span class="comment">@param[in] useNewWS Use new websocket service flag.</span></div>
 <div class="line"><span class="comment">*/</span></div>
-<div class="line"><span class="keyword">inline</span> <span class="keywordtype">void</span> <a name="a40"></a><a class="code" href="namespacesimple__gw.html#a94e3b1617eb11e11e2264c01eff5fdd2" title="The simple gateway application entry point.">main</a>(<span class="keywordtype">int</span> argc, <span class="keyword">const</span> <span class="keywordtype">char</span>* argv[], <span class="keywordtype">bool</span> useNewWS = <span class="keyword">true</span>)</div>
+<div class="line"><span class="keyword">inline</span> <span class="keywordtype">void</span> <a name="a41"></a><a class="code" href="namespacesimple__gw.html#a94e3b1617eb11e11e2264c01eff5fdd2" title="The simple gateway application entry point.">main</a>(<span class="keywordtype">int</span> argc, <span class="keyword">const</span> <span class="keywordtype">char</span>* argv[], <span class="keywordtype">bool</span> useNewWS = <span class="keyword">true</span>)</div>
 <div class="line">{</div>
 <div class="line">    { <span class="comment">// configure logging</span></div>
-<div class="line">        <a class="code" href="classhive_1_1log_1_1_target.html#aee8b75c99333d93584ad6da3ecb2e3fe" title="The shared pointer type.">log::Target::SharedPtr</a> log_file = <a name="a41"></a><a class="code" href="classhive_1_1log_1_1_target.html#a6d18b5cb9afd8313c52008d6c63c79df" title="The factory method.">log::Target::File::create</a>(<span class="stringliteral">&quot;simple_gw.log&quot;</span>);</div>
-<div class="line">        <a class="code" href="classhive_1_1log_1_1_target.html#aee8b75c99333d93584ad6da3ecb2e3fe" title="The shared pointer type.">log::Target::SharedPtr</a> log_console = <a name="a42"></a><a class="code" href="classhive_1_1log_1_1_logger.html#aa288e1d280a97ee13840fa5b9d08f775" title="Get the root logger.">log::Logger::root</a>().<a name="a43"></a><a class="code" href="classhive_1_1log_1_1_logger.html#a2e6cebab9ebaaf0e09715269e5ac3009" title="Get the target.">getTarget</a>();</div>
-<div class="line">        <a class="code" href="classhive_1_1log_1_1_logger.html#aa288e1d280a97ee13840fa5b9d08f775" title="Get the root logger.">log::Logger::root</a>().<a name="a44"></a><a class="code" href="classhive_1_1log_1_1_logger.html#a45fcb7516fd49eaf204895f29a0874fe" title="Set the target.">setTarget</a>(<a class="code" href="classhive_1_1log_1_1_target.html#a6d18b5cb9afd8313c52008d6c63c79df" title="The factory method.">log::Target::Tie::create</a>(log_file, log_console));</div>
-<div class="line">        <a class="code" href="classhive_1_1log_1_1_logger.html#aa288e1d280a97ee13840fa5b9d08f775" title="Get the root logger.">log::Logger::root</a>().<a name="a45"></a><a class="code" href="classhive_1_1log_1_1_logger.html#af3c02bfa8fab7fc22c9839ad82903dce" title="Set the logging level.">setLevel</a>(<a name="a46"></a><a class="code" href="namespacehive_1_1log.html#a221b779e6bb7b8d40677d7642bfefac5a1ca076c143f2ec60ba02c86573af9da3" title="The TRACE level.">log::LEVEL_TRACE</a>);</div>
-<div class="line">        <a name="_a47"></a><a class="code" href="classhive_1_1log_1_1_logger.html" title="The logger.">log::Logger</a>(<span class="stringliteral">&quot;/hive/http&quot;</span>).<a class="code" href="classhive_1_1log_1_1_logger.html#a45fcb7516fd49eaf204895f29a0874fe" title="Set the target.">setTarget</a>(log_file).<a class="code" href="classhive_1_1log_1_1_logger.html#af3c02bfa8fab7fc22c9839ad82903dce" title="Set the logging level.">setLevel</a>(<a name="a48"></a><a class="code" href="namespacehive_1_1log.html#a221b779e6bb7b8d40677d7642bfefac5a210bac66f34a56114215d54588b8c7f3" title="The DEBUG level.">log::LEVEL_DEBUG</a>); <span class="comment">// disable annoying messages</span></div>
-<div class="line">        log_console-&gt;setFormat(<a name="a49"></a><a class="code" href="classhive_1_1log_1_1_format.html#a5c721bfbc7afcd8ba55cfdd659c7e718" title="The factory method.">log::Format::create</a>(<span class="stringliteral">&quot;%N %L %M\n&quot;</span>));</div>
+<div class="line">        <a class="code" href="classhive_1_1log_1_1_target.html#aee8b75c99333d93584ad6da3ecb2e3fe" title="The shared pointer type.">log::Target::SharedPtr</a> log_file = <a name="a42"></a><a class="code" href="classhive_1_1log_1_1_target.html#a6d18b5cb9afd8313c52008d6c63c79df" title="The factory method.">log::Target::File::create</a>(<span class="stringliteral">&quot;simple_gw.log&quot;</span>);</div>
+<div class="line">        <a class="code" href="classhive_1_1log_1_1_target.html#aee8b75c99333d93584ad6da3ecb2e3fe" title="The shared pointer type.">log::Target::SharedPtr</a> log_console = <a name="a43"></a><a class="code" href="classhive_1_1log_1_1_logger.html#aa288e1d280a97ee13840fa5b9d08f775" title="Get the root logger.">log::Logger::root</a>().<a name="a44"></a><a class="code" href="classhive_1_1log_1_1_logger.html#a2e6cebab9ebaaf0e09715269e5ac3009" title="Get the target.">getTarget</a>();</div>
+<div class="line">        <a class="code" href="classhive_1_1log_1_1_logger.html#aa288e1d280a97ee13840fa5b9d08f775" title="Get the root logger.">log::Logger::root</a>().<a name="a45"></a><a class="code" href="classhive_1_1log_1_1_logger.html#a45fcb7516fd49eaf204895f29a0874fe" title="Set the target.">setTarget</a>(<a class="code" href="classhive_1_1log_1_1_target.html#a6d18b5cb9afd8313c52008d6c63c79df" title="The factory method.">log::Target::Tie::create</a>(log_file, log_console));</div>
+<div class="line">        <a class="code" href="classhive_1_1log_1_1_logger.html#aa288e1d280a97ee13840fa5b9d08f775" title="Get the root logger.">log::Logger::root</a>().<a name="a46"></a><a class="code" href="classhive_1_1log_1_1_logger.html#af3c02bfa8fab7fc22c9839ad82903dce" title="Set the logging level.">setLevel</a>(<a name="a47"></a><a class="code" href="namespacehive_1_1log.html#a221b779e6bb7b8d40677d7642bfefac5a1ca076c143f2ec60ba02c86573af9da3" title="The TRACE level.">log::LEVEL_TRACE</a>);</div>
+<div class="line">        <a name="_a48"></a><a class="code" href="classhive_1_1log_1_1_logger.html" title="The logger.">log::Logger</a>(<span class="stringliteral">&quot;/hive/http&quot;</span>).<a class="code" href="classhive_1_1log_1_1_logger.html#a45fcb7516fd49eaf204895f29a0874fe" title="Set the target.">setTarget</a>(log_file).<a class="code" href="classhive_1_1log_1_1_logger.html#af3c02bfa8fab7fc22c9839ad82903dce" title="Set the logging level.">setLevel</a>(<a name="a49"></a><a class="code" href="namespacehive_1_1log.html#a221b779e6bb7b8d40677d7642bfefac5a210bac66f34a56114215d54588b8c7f3" title="The DEBUG level.">log::LEVEL_DEBUG</a>); <span class="comment">// disable annoying messages</span></div>
+<div class="line">        log_console-&gt;setFormat(<a name="a50"></a><a class="code" href="classhive_1_1log_1_1_format.html#a00280823d23a1360c13c162220c83882" title="The factory method.">log::Format::create</a>(<span class="stringliteral">&quot;%N %L %M\n&quot;</span>));</div>
 <div class="line">        log_console-&gt;setMinimumLevel(<a class="code" href="namespacehive_1_1log.html#a221b779e6bb7b8d40677d7642bfefac5a210bac66f34a56114215d54588b8c7f3" title="The DEBUG level.">log::LEVEL_DEBUG</a>);</div>
 <div class="line">    }</div>
 <div class="line"></div>
 <div class="line">    <span class="keywordflow">if</span> (useNewWS)</div>
-<div class="line">        <a name="a50"></a><a class="code" href="classsimple__gw_1_1_application_w_s.html#a9ff75310716593d5a291ba43c2a96d49" title="The factory method.">ApplicationWS::create</a>(argc, argv)-&gt;run();</div>
+<div class="line">        <a name="a51"></a><a class="code" href="classsimple__gw_1_1_application_w_s.html#a9ff75310716593d5a291ba43c2a96d49" title="The factory method.">ApplicationWS::create</a>(argc, argv)-&gt;run();</div>
 <div class="line">    <span class="keywordflow">else</span></div>
-<div class="line">        <a name="a51"></a><a class="code" href="classsimple__gw_1_1_application.html#a9ff75310716593d5a291ba43c2a96d49" title="The factory method.">Application::create</a>(argc, argv)-&gt;run();</div>
+<div class="line">        <a name="a52"></a><a class="code" href="classsimple__gw_1_1_application.html#a9ff75310716593d5a291ba43c2a96d49" title="The factory method.">Application::create</a>(argc, argv)-&gt;run();</div>
 <div class="line">}</div>
 <div class="line"></div>
 <div class="line">} <span class="comment">// simple_gw namespace</span></div>
@@ -1332,7 +1348,7 @@ $(document).ready(function(){initNavTree('examples_2simple_gw_8hpp-example.html'
 <!-- start footer part -->
 <div id="nav-path" class="navpath"><!-- id is needed for treeview function! -->
   <ul>
-    <li class="footer">Generated on Fri Dec 28 2012 16:00:17 for DeviceHive C++ Framework by
+    <li class="footer">Generated on Thu Jan 24 2013 12:25:51 for DeviceHive C++ Framework by
     <a href="http://www.doxygen.org/index.html">
     <img class="footer" src="doxygen.png" alt="doxygen"/></a> 1.8.2 </li>
   </ul>

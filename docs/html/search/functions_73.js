@@ -16,6 +16,7 @@ var searchData=
   ['serverapi',['ServerAPI',['../classcloud6_1_1_server_a_p_i.html#a78068cfff58aae7cba02d0de9d866c8f',1,'cloud6::ServerAPI']]],
   ['servermodulerest',['ServerModuleREST',['../classcloud6_1_1_server_module_r_e_s_t.html#aea012da3bacf096e1a22198230716ba1',1,'cloud6::ServerModuleREST']]],
   ['servermodulews',['ServerModuleWS',['../classcloud7_1_1_server_module_w_s.html#a4def990295753ea488a8ae58ed4a3869',1,'cloud7::ServerModuleWS']]],
+  ['setautoflushlevel',['setAutoFlushLevel',['../classhive_1_1log_1_1_target_1_1_file.html#a177b5ceadee3afe6c2bbe277516e6679',1,'hive::log::Target::File']]],
   ['setcontent',['setContent',['../classhive_1_1http_1_1_message.html#a39fa2d017bde4bddd7cf104faf347aa0',1,'hive::http::Message']]],
   ['setformat',['setFormat',['../classhive_1_1log_1_1_target.html#ae61096d6161686278d43cfd2c07cc401',1,'hive::log::Target']]],
   ['setlevel',['setLevel',['../classhive_1_1log_1_1_logger.html#af3c02bfa8fab7fc22c9839ad82903dce',1,'hive::log::Logger']]],

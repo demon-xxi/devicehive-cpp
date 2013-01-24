@@ -44,12 +44,13 @@ var NAVTREE =
 var NAVTREEINDEX =
 [
 "annotated.html",
-"classgateway_1_1_layout_1_1_element.html#aaee865995f2e20f2e00092dd24c31f7b",
-"classhive_1_1http_1_1_connection_1_1_secure.html#ab0b8547e61b7190a5198f5a75d5c2f7e",
-"classhive_1_1log_1_1_format.html#ae11c67abb2f478aa2db0c1fa0ecb6030",
-"classsimple__dev_1_1_application_w_s.html#a1a91425d65b795d9bdfad2c706aebce6",
-"classzigbee__gw_1_1_application_w_s.html#a668ac1a0aad00ddf81910b9bf9975290",
-"log_8hpp.html#a221b779e6bb7b8d40677d7642bfefac5a210bac66f34a56114215d54588b8c7f3"
+"classgateway_1_1_layout.html#a875f599e50f7ae960d6d2a1dbd889f90",
+"classhive_1_1http_1_1_connection_1_1_secure.html",
+"classhive_1_1json_1_1error_1_1_syntax_error.html#abf6a5f1a25c473a2270f01db2148309b",
+"classlogcfg_1_1_log_config.html#a681437862af4269443194d185a966eb6",
+"classzigbee__gw_1_1_application.html#ae92ae13a136435391be883fd6f0f5c8c",
+"http_8hpp.html#aa5643cb0f8392ad60cd7687f35b31ae4",
+"ws13_8hpp.html#a8159889ed4d99691ead5971e9c7d51d8"
 ];
 
 var SYNCONMSG = 'click to disable panel synchronisation';

@@ -7,5 +7,7 @@ var searchData=
   ['le2h_5f32',['le2h_32',['../namespacehive_1_1misc.html#a5dca70f802907a3de864aa7ffaf038e3',1,'hive::misc']]],
   ['le2h_5f64',['le2h_64',['../namespacehive_1_1misc.html#a3cc7b8474e641bef9d59c5da1ad00d69',1,'hive::misc']]],
   ['listenforactions',['listenForActions',['../classcloud7_1_1_web_socket_a_p_i.html#aa4089be51ed2f7716b3cf69c0730e1ae',1,'cloud7::WebSocketAPI']]],
-  ['logger',['Logger',['../classhive_1_1log_1_1_logger.html#a34b71e2259e0c1949ab7d99344561753',1,'hive::log::Logger::Logger(String const &amp;name)'],['../classhive_1_1log_1_1_logger.html#a4fac0c9f6ee2dce6abd726264b9195f7',1,'hive::log::Logger::Logger()']]]
+  ['logconfig',['LogConfig',['../classlogcfg_1_1_log_config.html#a48db95ec89801f976d1acce29b60cb7f',1,'logcfg::LogConfig']]],
+  ['logger',['Logger',['../classhive_1_1log_1_1_logger.html#a34b71e2259e0c1949ab7d99344561753',1,'hive::log::Logger::Logger(String const &amp;name)'],['../classhive_1_1log_1_1_logger.html#a4fac0c9f6ee2dce6abd726264b9195f7',1,'hive::log::Logger::Logger()']]],
+  ['loggerinfo',['LoggerInfo',['../structlogcfg_1_1_log_config_1_1_logger_info.html#a6d4a048a20eb2428fc71773261319f52',1,'logcfg::LogConfig::LoggerInfo']]]
 ];

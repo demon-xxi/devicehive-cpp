@@ -28,7 +28,7 @@
  <tr style="height: 56px;">
   <td style="padding-left: 0.5em;">
    <div id="projectname">DeviceHive C++ Framework
-   &#160;<span id="projectnumber">1.0</span>
+   &#160;<span id="projectnumber">1.1</span>
    </div>
    <div id="projectbrief">DeviceHive framework library for C++</div>
   </td>
@@ -119,7 +119,7 @@ DeviceHive framework</div></div>
 <p>Each message is identified by unique intent number. The <a class="el" href="classgateway_1_1_layout_manager.html" title="The layout manager.">gateway::LayoutManager</a> class manages such intent numbers and corresponding layouts.</p>
 <h2>Control flow</h2>
 <p>At the start we should send registration request to the target device connected via serial cable. Once we got registration response we register our device on the server using <a class="el" href="classcloud6_1_1_server_module_r_e_s_t.html#a514c33c7597ea6f22e35f2210ad67c86" title="Register the device asynchronously.">simple_gw::Application::asyncRegisterDevice()</a> method.</p>
-<p>If registration is successful we start listening for commands from the DeviceHive server using <a class="el" href="classcloud6_1_1_server_module_r_e_s_t.html#aaf6a5b2d91e8cf9e2e5cdc248d9535a1" title="Poll commands asynchronously.">simple_gw::Application::asyncPollCommands()</a> method. Once we received command we convert it from JSON to binary format and send converted command to the device via serial port.</p>
+<p>If registration is successful we start listening for commands from the DeviceHive server using <a class="el" href="classcloud6_1_1_server_module_r_e_s_t.html#a9321e5b5f813134788eddc8f9bf7d728" title="Poll commands asynchronously.">simple_gw::Application::asyncPollCommands()</a> method. Once we received command we convert it from JSON to binary format and send converted command to the device via serial port.</p>
 <p>At the same time we listen for notifications from serial port. Once we got notification from device we convert it from binary to JSON format and send converted notification to the DeviceHive server.</p>
 <h2>Command line arguments</h2>
 <p>Application supports the following command line arguments:</p>
@@ -152,7 +152,7 @@ DeviceHive framework</div></div>
 <!-- start footer part -->
 <div id="nav-path" class="navpath"><!-- id is needed for treeview function! -->
   <ul>
-    <li class="footer">Generated on Fri Dec 28 2012 16:00:17 for DeviceHive C++ Framework by
+    <li class="footer">Generated on Thu Jan 24 2013 12:25:51 for DeviceHive C++ Framework by
     <a href="http://www.doxygen.org/index.html">
     <img class="footer" src="doxygen.png" alt="doxygen"/></a> 1.8.2 </li>
   </ul>

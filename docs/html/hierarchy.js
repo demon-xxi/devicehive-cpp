@@ -50,7 +50,9 @@ var hierarchy =
     [ "IStream", "classhive_1_1bin_1_1_i_stream.html", null ],
     [ "Layout", "classgateway_1_1_layout.html", null ],
     [ "LayoutManager", "classgateway_1_1_layout_manager.html", null ],
+    [ "LogConfig", "classlogcfg_1_1_log_config.html", null ],
     [ "Logger", "classhive_1_1log_1_1_logger.html", null ],
+    [ "LogConfig::LoggerInfo", "structlogcfg_1_1_log_config_1_1_logger_info.html", null ],
     [ "Message", "classhive_1_1ws13_1_1_message.html", null ],
     [ "Message", "classhive_1_1http_1_1_message.html", [
       [ "Request", "classhive_1_1http_1_1_request.html", null ],
@@ -93,8 +95,8 @@ var hierarchy =
       ] ]
     ] ],
     [ "Transceiver< StreamT, FrameT >::SendTask", "classhive_1_1bin_1_1_transceiver_1_1_send_task.html", null ],
-    [ "Serializer", "classcloud6_1_1_serializer.html", null ],
     [ "Engine::Serializer", "classgateway_1_1_engine_1_1_serializer.html", null ],
+    [ "Serializer", "classcloud6_1_1_serializer.html", null ],
     [ "SerialModule", "classgateway_1_1_serial_module.html", [
       [ "Application", "classsimple__gw_1_1_application.html", null ],
       [ "ApplicationWS", "classsimple__gw_1_1_application_w_s.html", null ],

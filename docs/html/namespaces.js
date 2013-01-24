@@ -5,6 +5,7 @@ var namespaces =
     [ "cloud7", "namespacecloud7.html", null ],
     [ "gateway", "namespacegateway.html", null ],
     [ "hive", "namespacehive.html", "namespacehive" ],
+    [ "logcfg", "namespacelogcfg.html", null ],
     [ "simple_dev", "namespacesimple__dev.html", null ],
     [ "simple_gw", "namespacesimple__gw.html", null ],
     [ "xbee", "namespacexbee.html", null ],

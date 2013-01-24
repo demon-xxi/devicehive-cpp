@@ -9,6 +9,7 @@ var classsimple__gw_1_1_application =
     [ "shared_from_this", "classsimple__gw_1_1_application.html#aec4f2e1e53782df6c27a5282fd5b6dbc", null ],
     [ "start", "classsimple__gw_1_1_application.html#a62b63bddf378b0e13a4affa3e8e1bedf", null ],
     [ "stop", "classsimple__gw_1_1_application.html#ae92ae13a136435391be883fd6f0f5c8c", null ],
+    [ "onGotServerInfo", "classsimple__gw_1_1_application.html#a59a26786f87900c5f881d18650c411d5", null ],
     [ "onRegisterDevice", "classsimple__gw_1_1_application.html#ac20a1ff7553fe571504aa0cd9f78feff", null ],
     [ "onPollCommands", "classsimple__gw_1_1_application.html#ae13a090604c5558ed2fd5ca20995eb5e", null ],
     [ "sendDelayedNotifications", "classsimple__gw_1_1_application.html#a54beeb89e7aeacbb69cb12f083baaa41", null ],
@@ -28,5 +29,6 @@ var classsimple__gw_1_1_application =
     [ "m_gw", "classsimple__gw_1_1_application.html#a13ef8239970ee6bdb702f9f533074aef", null ],
     [ "m_device", "classsimple__gw_1_1_application.html#a395e5fd7a7935bad58abbea84dbd9f15", null ],
     [ "m_deviceRegistered", "classsimple__gw_1_1_application.html#a8c476f209d4296d4a504c4b7ecc2059d", null ],
+    [ "m_lastCommandTimestamp", "classsimple__gw_1_1_application.html#ab86685bc5488bd9b8a197849e4eeea87", null ],
     [ "m_delayedNotifications", "classsimple__gw_1_1_application.html#a20098bccfcf9e42e021827375fdbaef8", null ]
 ];

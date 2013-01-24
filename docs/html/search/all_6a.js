@@ -9,5 +9,6 @@ var searchData=
   ['json2network',['json2network',['../classcloud6_1_1_serializer.html#aac8c44e95e9f1f6291fb1b5e8f2ab7d2',1,'cloud6::Serializer']]],
   ['json2ntf',['json2ntf',['../classcloud6_1_1_serializer.html#a799679e8280ce7931f24db78d75d69c0',1,'cloud6::Serializer']]],
   ['jsontoframe',['jsonToFrame',['../classgateway_1_1_engine.html#a35a66f717a938d600ad28c34fe5daba2',1,'gateway::Engine']]],
+  ['jsonvalue',['JsonValue',['../classlogcfg_1_1_log_config.html#aaabbf5b2ce39e06ef0f5791d7da283ed',1,'logcfg::LogConfig']]],
   ['json_20module',['JSON module',['../page_hive_json.html',1,'page_hive']]]
 ];

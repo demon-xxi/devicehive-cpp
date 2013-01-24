@@ -28,7 +28,7 @@
  <tr style="height: 56px;">
   <td style="padding-left: 0.5em;">
    <div id="projectname">DeviceHive C++ Framework
-   &#160;<span id="projectnumber">1.0</span>
+   &#160;<span id="projectnumber">1.1</span>
    </div>
    <div id="projectbrief">DeviceHive framework library for C++</div>
   </td>
@@ -209,6 +209,10 @@ $(document).ready(function(){initNavTree('functions_0x6d.html','');});
 <li>m_isText
 : <a class="el" href="classhive_1_1ws13_1_1_message.html#a24bb1d61c4bb2d4dc4085c977f208fb5">Message</a>
 </li>
+<li>m_lastCommandTimestamp
+: <a class="el" href="classsimple__dev_1_1_application.html#ab86685bc5488bd9b8a197849e4eeea87">Application</a>
+, <a class="el" href="classzigbee__gw_1_1_application_1_1_z_device.html#ab86685bc5488bd9b8a197849e4eeea87">Application::ZDevice</a>
+</li>
 <li>m_layouts
 : <a class="el" href="classgateway_1_1_engine.html#abf16c9f5f3bf37924dc99088e92e88e2">Engine</a>
 </li>
@@ -219,12 +223,12 @@ $(document).ready(function(){initNavTree('functions_0x6d.html','');});
 : <a class="el" href="classhive_1_1log_1_1impl_1_1_block.html#a434474dfe11c603cd3512231cdaa8baa">Block</a>
 </li>
 <li>m_log
-: <a class="el" href="classcloud6_1_1_server_a_p_i.html#a050dc6e76e4021d7d115d464bf6922b3">ServerAPI</a>
-, <a class="el" href="classcloud7_1_1_web_socket_a_p_i.html#a050dc6e76e4021d7d115d464bf6922b3">WebSocketAPI</a>
-, <a class="el" href="classhive_1_1bin_1_1_transceiver.html#a050dc6e76e4021d7d115d464bf6922b3">Transceiver&lt; StreamT, FrameT &gt;</a>
-, <a class="el" href="classhive_1_1http_1_1_client.html#a050dc6e76e4021d7d115d464bf6922b3">Client</a>
+: <a class="el" href="classhive_1_1http_1_1_client.html#a050dc6e76e4021d7d115d464bf6922b3">Client</a>
 , <a class="el" href="classhive_1_1ws13_1_1_web_socket.html#a050dc6e76e4021d7d115d464bf6922b3">WebSocket</a>
 , <a class="el" href="classbasic__app_1_1_application.html#a050dc6e76e4021d7d115d464bf6922b3">Application</a>
+, <a class="el" href="classcloud6_1_1_server_a_p_i.html#a050dc6e76e4021d7d115d464bf6922b3">ServerAPI</a>
+, <a class="el" href="classcloud7_1_1_web_socket_a_p_i.html#a050dc6e76e4021d7d115d464bf6922b3">WebSocketAPI</a>
+, <a class="el" href="classhive_1_1bin_1_1_transceiver.html#a050dc6e76e4021d7d115d464bf6922b3">Transceiver&lt; StreamT, FrameT &gt;</a>
 </li>
 <li>m_log_
 : <a class="el" href="classcloud6_1_1_server_module_r_e_s_t.html#afaa2c9dab38668f3933714e28b601503">ServerModuleREST</a>
@@ -233,6 +237,9 @@ $(document).ready(function(){initNavTree('functions_0x6d.html','');});
 </li>
 <li>m_logger
 : <a class="el" href="classhive_1_1log_1_1impl_1_1_block.html#aeb541caac6d4a217848ea81c7dc1fb5b">Block</a>
+</li>
+<li>m_loggers
+: <a class="el" href="classlogcfg_1_1_log_config.html#afbdff57ea9ff188547bd147e360b5fd7">LogConfig</a>
 </li>
 <li>m_maxFileSize
 : <a class="el" href="classhive_1_1log_1_1_target_1_1_file.html#a95637a4830a18e9e526e55ef5e454ef4">Target::File</a>
@@ -262,10 +269,8 @@ $(document).ready(function(){initNavTree('functions_0x6d.html','');});
 , <a class="el" href="classzigbee__gw_1_1_application_w_s.html#a6a263f78c49e43c344cc91442fed3fa4">ApplicationWS</a>
 </li>
 <li>m_networkName
-: <a class="el" href="classsimple__gw_1_1_application.html#a965ac2bc8a6a54f81ca4f82fed476cb8">Application</a>
+: <a class="el" href="classzigbee__gw_1_1_application.html#a965ac2bc8a6a54f81ca4f82fed476cb8">Application</a>
 , <a class="el" href="classsimple__gw_1_1_application_w_s.html#a965ac2bc8a6a54f81ca4f82fed476cb8">ApplicationWS</a>
-, <a class="el" href="classzigbee__gw_1_1_application.html#a965ac2bc8a6a54f81ca4f82fed476cb8">Application</a>
-, <a class="el" href="classzigbee__gw_1_1_application_w_s.html#a965ac2bc8a6a54f81ca4f82fed476cb8">ApplicationWS</a>
 </li>
 <li>m_notifications
 : <a class="el" href="classgateway_1_1_engine.html#adaf592f7dd8201c632bf71a1fa0006a5">Engine</a>
@@ -292,8 +297,8 @@ $(document).ready(function(){initNavTree('functions_0x6d.html','');});
 , <a class="el" href="classhive_1_1http_1_1_url_1_1_builder.html#a8043890a29823984eba764995bc1a757">Url::Builder</a>
 </li>
 <li>m_query
-: <a class="el" href="classhive_1_1http_1_1_url_1_1_builder.html#a9cd99b4510072b23879e0248ebd775da">Url::Builder</a>
-, <a class="el" href="classhive_1_1http_1_1_url.html#a0ca1195dbb4d2a2bc522e582101e9846">Url</a>
+: <a class="el" href="classhive_1_1http_1_1_url.html#a0ca1195dbb4d2a2bc522e582101e9846">Url</a>
+, <a class="el" href="classhive_1_1http_1_1_url_1_1_builder.html#a9cd99b4510072b23879e0248ebd775da">Url::Builder</a>
 </li>
 <li>m_recvFrameCallback
 : <a class="el" href="classhive_1_1ws13_1_1_web_socket.html#a2b5badb4bfa71aa7a43c647409d41f6d">WebSocket</a>
@@ -328,8 +333,8 @@ $(document).ready(function(){initNavTree('functions_0x6d.html','');});
 : <a class="el" href="classgateway_1_1_serial_module.html#ae893d2a2a5beb99f2aae0f533f39238c">SerialModule</a>
 </li>
 <li>m_serverAPI
-: <a class="el" href="classcloud6_1_1_server_module_r_e_s_t.html#ac3d7445609bbed16ed1463b12b703346">ServerModuleREST</a>
-, <a class="el" href="classcloud7_1_1_server_module_w_s.html#a67efb6aa872b7c6025c7690a922b01fb">ServerModuleWS</a>
+: <a class="el" href="classcloud7_1_1_server_module_w_s.html#a67efb6aa872b7c6025c7690a922b01fb">ServerModuleWS</a>
+, <a class="el" href="classcloud6_1_1_server_module_r_e_s_t.html#ac3d7445609bbed16ed1463b12b703346">ServerModuleREST</a>
 </li>
 <li>m_serverOpenTimer
 : <a class="el" href="classcloud7_1_1_server_module_w_s.html#ab13385475b1d3bd6d4c3e367116f8fea">ServerModuleWS</a>
@@ -350,10 +355,13 @@ $(document).ready(function(){initNavTree('functions_0x6d.html','');});
 : <a class="el" href="classhive_1_1json_1_1_value.html#adb673a5f3c9ed660e58ec991397e8b5e">Value</a>
 </li>
 <li>m_stream
-: <a class="el" href="classhive_1_1bin_1_1_i_stream.html#a993651a02222a1da8ae9371c819b9b3a">IStream</a>
-, <a class="el" href="classhive_1_1bin_1_1_transceiver.html#a2e52696bc36bdeb0758f9b7ffad5fc42">Transceiver&lt; StreamT, FrameT &gt;</a>
+: <a class="el" href="classhive_1_1bin_1_1_transceiver.html#a2e52696bc36bdeb0758f9b7ffad5fc42">Transceiver&lt; StreamT, FrameT &gt;</a>
 , <a class="el" href="classhive_1_1bin_1_1_o_stream.html#a25a8627b3c59065bbd3e2a44bee7df9b">OStream</a>
+, <a class="el" href="classhive_1_1bin_1_1_i_stream.html#a993651a02222a1da8ae9371c819b9b3a">IStream</a>
 , <a class="el" href="classhive_1_1http_1_1_connection_1_1_secure.html#ac52aa4821dd64eeec4ee0f55aeed0e04">Connection::Secure</a>
+</li>
+<li>m_targets
+: <a class="el" href="classlogcfg_1_1_log_config.html#a1e856dedbf26f583418cd95ad72666f0">LogConfig</a>
 </li>
 <li>m_tasks
 : <a class="el" href="classhive_1_1http_1_1_client.html#a13dbb397d08449c3d2afdc92463d5254">Client</a>
@@ -362,9 +370,9 @@ $(document).ready(function(){initNavTree('functions_0x6d.html','');});
 : <a class="el" href="classbasic__app_1_1_application.html#aab92215f4237ba8763de649fa09345a6">Application</a>
 </li>
 <li>m_this
-: <a class="el" href="classcloud6_1_1_server_module_r_e_s_t.html#a45372b7e3ba9d86968bcb8ca869c3d9c">ServerModuleREST</a>
+: <a class="el" href="classcloud7_1_1_server_module_w_s.html#a45372b7e3ba9d86968bcb8ca869c3d9c">ServerModuleWS</a>
+, <a class="el" href="classcloud6_1_1_server_module_r_e_s_t.html#a45372b7e3ba9d86968bcb8ca869c3d9c">ServerModuleREST</a>
 , <a class="el" href="classgateway_1_1_serial_module.html#aa38b65248cfd643cd52832666af50526">SerialModule</a>
-, <a class="el" href="classcloud7_1_1_server_module_w_s.html#a45372b7e3ba9d86968bcb8ca869c3d9c">ServerModuleWS</a>
 </li>
 <li>m_timeout_ms
 : <a class="el" href="classcloud7_1_1_web_socket_a_p_i.html#adae767175df3fe6d419765d973eeb3d5">WebSocketAPI</a>
@@ -390,8 +398,8 @@ $(document).ready(function(){initNavTree('functions_0x6d.html','');});
 : <a class="el" href="classhive_1_1http_1_1_request.html#a525f21cb43d50ce659ca8793cbd03df3">Request</a>
 </li>
 <li>m_user
-: <a class="el" href="classhive_1_1http_1_1_url.html#af75a0fc915c293a7457faa48d60de7ee">Url</a>
-, <a class="el" href="classhive_1_1http_1_1_url_1_1_builder.html#af75a0fc915c293a7457faa48d60de7ee">Url::Builder</a>
+: <a class="el" href="classhive_1_1http_1_1_url_1_1_builder.html#af75a0fc915c293a7457faa48d60de7ee">Url::Builder</a>
+, <a class="el" href="classhive_1_1http_1_1_url.html#af75a0fc915c293a7457faa48d60de7ee">Url</a>
 </li>
 <li>m_val
 : <a class="el" href="classhive_1_1json_1_1_value.html#aaebd181c1c97841edd4d3e7eaf20dbce">Value</a>
@@ -406,12 +414,15 @@ $(document).ready(function(){initNavTree('functions_0x6d.html','');});
 : <a class="el" href="classcloud7_1_1_web_socket_a_p_i.html#afaaee4dafc1a35cac340bc0f5a633f98">WebSocketAPI</a>
 </li>
 <li>m_xbee
-: <a class="el" href="classzigbee__gw_1_1_application.html#aad1563d2344f525103a783f9bcd66569">Application</a>
-, <a class="el" href="classzigbee__gw_1_1_application_w_s.html#aad1563d2344f525103a783f9bcd66569">ApplicationWS</a>
+: <a class="el" href="classzigbee__gw_1_1_application_w_s.html#aad1563d2344f525103a783f9bcd66569">ApplicationWS</a>
+, <a class="el" href="classzigbee__gw_1_1_application.html#aad1563d2344f525103a783f9bcd66569">Application</a>
 </li>
 <li>m_xbeeFrameId
 : <a class="el" href="classzigbee__gw_1_1_application.html#a5a06170a8d606eb211713fb6984b427e">Application</a>
 , <a class="el" href="classzigbee__gw_1_1_application_w_s.html#a5a06170a8d606eb211713fb6984b427e">ApplicationWS</a>
+</li>
+<li>makeTarget()
+: <a class="el" href="classlogcfg_1_1_log_config.html#a6f08fcf1c1fcf8ff1a8de7dc90181be8">LogConfig</a>
 </li>
 <li>margin
 : <a class="el" href="classsimple__dev_1_1_temp_sensor.html#a89dbb84b687c00c3a4f49d26adea665d">TempSensor</a>
@@ -428,11 +439,11 @@ $(document).ready(function(){initNavTree('functions_0x6d.html','');});
 <li>membersEnd()
 : <a class="el" href="classhive_1_1json_1_1_value.html#a4c6bc46e0ef7be51f8ce11e8fa690af4">Value</a>
 </li>
-<li>Message()
-: <a class="el" href="classhive_1_1ws13_1_1_message.html#a6e1e4cc1b3c3e940ade3eced7ba8e6ec">Message</a>
-</li>
 <li>message
 : <a class="el" href="classhive_1_1log_1_1_message.html#a254bf0858da09c96a48daf64404eb4f8">Message</a>
+</li>
+<li>Message()
+: <a class="el" href="classhive_1_1ws13_1_1_message.html#a6e1e4cc1b3c3e940ade3eced7ba8e6ec">Message</a>
 </li>
 <li>MutableBuffers
 : <a class="el" href="classhive_1_1http_1_1_connection.html#a351376944807db625f7f0606e4b52e85">Connection</a>
@@ -443,7 +454,7 @@ $(document).ready(function(){initNavTree('functions_0x6d.html','');});
 <!-- start footer part -->
 <div id="nav-path" class="navpath"><!-- id is needed for treeview function! -->
   <ul>
-    <li class="footer">Generated on Fri Dec 28 2012 16:00:19 for DeviceHive C++ Framework by
+    <li class="footer">Generated on Thu Jan 24 2013 12:25:54 for DeviceHive C++ Framework by
     <a href="http://www.doxygen.org/index.html">
     <img class="footer" src="doxygen.png" alt="doxygen"/></a> 1.8.2 </li>
   </ul>

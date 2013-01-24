@@ -28,7 +28,7 @@
  <tr style="height: 56px;">
   <td style="padding-left: 0.5em;">
    <div id="projectname">DeviceHive C++ Framework
-   &#160;<span id="projectnumber">1.0</span>
+   &#160;<span id="projectnumber">1.1</span>
    </div>
    <div id="projectbrief">DeviceHive framework library for C++</div>
   </td>
@@ -172,7 +172,7 @@ Protected Member Functions</h2></td></tr>
 <tr class="heading"><td colspan="2"><h2 class="groupheader"><a name="pro-attribs"></a>
 Protected Attributes</h2></td></tr>
 <tr class="memitem:a1ae3a5ca805c0935341ac5e849c30a05"><td class="memItemLeft" align="right" valign="top"><a class="el" href="namespacehive.html#a4fcce0eedf9be71754b55a7e7a6d7f50">OStream</a> &amp;&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="classhive_1_1log_1_1_target_1_1_stream.html#a1ae3a5ca805c0935341ac5e849c30a05">m_os</a></td></tr>
-<tr class="memdesc:a1ae3a5ca805c0935341ac5e849c30a05"><td class="mdescLeft">&#160;</td><td class="mdescRight">The output stream reference.  <a href="#a1ae3a5ca805c0935341ac5e849c30a05"></a><br/></td></tr>
+<tr class="memdesc:a1ae3a5ca805c0935341ac5e849c30a05"><td class="mdescLeft">&#160;</td><td class="mdescRight">The external stream.  <a href="#a1ae3a5ca805c0935341ac5e849c30a05"></a><br/></td></tr>
 <tr class="separator:a1ae3a5ca805c0935341ac5e849c30a05"><td class="memSeparator" colspan="2">&#160;</td></tr>
 <tr class="inherit_header pro_attribs_classhive_1_1log_1_1_target"><td colspan="2" onclick="javascript:toggleInherit('pro_attribs_classhive_1_1log_1_1_target')"><img src="closed.png" alt="-"/>&#160;Protected Attributes inherited from <a class="el" href="classhive_1_1log_1_1_target.html">Target</a></td></tr>
 <tr class="memitem:aab12f3f6df1a9b0d5bbda52ca17b4895 inherit pro_attribs_classhive_1_1log_1_1_target"><td class="memItemLeft" align="right" valign="top"><a class="el" href="classhive_1_1log_1_1_format.html#ace352581e45d827e60bfa04109da6b0d">Format::SharedPtr</a>&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="classhive_1_1log_1_1_target.html#aab12f3f6df1a9b0d5bbda52ca17b4895">m_format</a></td></tr>
@@ -184,8 +184,8 @@ Protected Attributes</h2></td></tr>
 </table>
 <a name="details" id="details"></a><h2 class="groupheader">Detailed Description</h2>
 <div class="textblock"><p>The "Stream" target. </p>
-<p>Sends log messages to an external stream, for example: <code>std::cerr</code> or <code>std::cout</code>.</p>
-<p>Note, the stream object is stored as reference. Mind the stream lifetime. </p>
+<p>Sends log messages to an external stream such as <code>std::cerr</code> or <code>std::cout</code>.</p>
+<dl class="section warning"><dt>Warning</dt><dd>The stream object is stored as reference. Mind the external stream object lifetime. </dd></dl>
 </div><h2 class="groupheader">Member Typedef Documentation</h2>
 <a class="anchor" id="a0b9bc11c8260dc2ad2b138b33de2b99c"></a>
 <div class="memitem">
@@ -227,7 +227,7 @@ Protected Attributes</h2></td></tr>
 <p>The main constructor. </p>
 <dl class="params"><dt>Parameters</dt><dd>
   <table class="params">
-    <tr><td class="paramdir">[in]</td><td class="paramname">os</td><td>The output stream. </td></tr>
+    <tr><td class="paramdir">[in]</td><td class="paramname">os</td><td>The external stream. </td></tr>
   </table>
   </dd>
 </dl>
@@ -260,7 +260,7 @@ Protected Attributes</h2></td></tr>
 <p>The factory method. </p>
 <dl class="params"><dt>Parameters</dt><dd>
   <table class="params">
-    <tr><td class="paramdir">[in]</td><td class="paramname">os</td><td>The output stream. </td></tr>
+    <tr><td class="paramdir">[in]</td><td class="paramname">os</td><td>The external stream. </td></tr>
   </table>
   </dd>
 </dl>
@@ -351,7 +351,7 @@ Protected Attributes</h2></td></tr>
   </table>
   </dd>
 </dl>
- </p>
+ Writes the log message to the external stream. </p>
 
 <p>Reimplemented from <a class="el" href="classhive_1_1log_1_1_target.html#aa9fdf865f5e7cd98d827465f5062ba3a">Target</a>.</p>
 
@@ -376,7 +376,7 @@ Protected Attributes</h2></td></tr>
 </table>
 </div><div class="memdoc">
 
-<p>The output stream reference. </p>
+<p>The external stream. </p>
 
 </div>
 </div>
@@ -389,7 +389,7 @@ Protected Attributes</h2></td></tr>
 <div id="nav-path" class="navpath"><!-- id is needed for treeview function! -->
   <ul>
     <li class="navelem"><a class="el" href="namespacehive.html">hive</a></li><li class="navelem"><a class="el" href="namespacehive_1_1log.html">log</a></li><li class="navelem"><a class="el" href="classhive_1_1log_1_1_target.html">Target</a></li><li class="navelem"><a class="el" href="classhive_1_1log_1_1_target_1_1_stream.html">Stream</a></li>
-    <li class="footer">Generated on Fri Dec 28 2012 16:00:18 for DeviceHive C++ Framework by
+    <li class="footer">Generated on Thu Jan 24 2013 12:25:52 for DeviceHive C++ Framework by
     <a href="http://www.doxygen.org/index.html">
     <img class="footer" src="doxygen.png" alt="doxygen"/></a> 1.8.2 </li>
   </ul>
