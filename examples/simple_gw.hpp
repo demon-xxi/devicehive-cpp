@@ -133,6 +133,7 @@ protected:
     {
         Base::start();
         asyncOpenSerial(0); // ASAP
+        asyncGetServerInfo();
     }
 
 
@@ -150,6 +151,19 @@ protected:
 
 private: // ServerModuleREST
 
+    /// @copydoc cloud6::ServerModuleREST::onGotServerInfo()
+    virtual void onGotServerInfo(boost::system::error_code err, json::Value const& info)
+    {
+        ServerModuleREST::onGotServerInfo(err, info);
+
+        if (!err)
+        {
+            // update the last command time!
+            m_lastCommandTimestamp = info["serverTimestamp"].asString();
+        }
+    }
+
+
     /// @copydoc cloud6::ServerModuleREST::onRegisterDevice()
     virtual void onRegisterDevice(boost::system::error_code err, cloud6::DevicePtr device)
     {
@@ -159,7 +173,7 @@ private: // ServerModuleREST
         {
             m_deviceRegistered = true;
 
-            asyncPollCommands(device);
+            asyncPollCommands(device, m_lastCommandTimestamp);
             sendDelayedNotifications();
         }
     }
@@ -176,6 +190,7 @@ private: // ServerModuleREST
             for (Iterator i = commands.begin(); i != commands.end(); ++i)
             {
                 cloud6::Command cmd = *i; // copy to modify
+                m_lastCommandTimestamp = cmd.timestamp;
                 bool processed = true;
 
                 try
@@ -195,7 +210,7 @@ private: // ServerModuleREST
                     asyncUpdateCommand(device, cmd);
             }
 
-            asyncPollCommands(device); // start poll again
+            asyncPollCommands(device, m_lastCommandTimestamp); // start poll again
         }
     }
 
@@ -498,6 +513,7 @@ private:
 private:
     cloud6::DevicePtr m_device; ///< @brief The device.
     bool m_deviceRegistered; ///< @brief The DeviceHive cloud "registered" flag.
+    String m_lastCommandTimestamp; ///< @brief The timestamp of the last received command.
     std::vector<cloud6::Notification> m_delayedNotifications; ///< @brief The list of delayed notification.
 };
 
