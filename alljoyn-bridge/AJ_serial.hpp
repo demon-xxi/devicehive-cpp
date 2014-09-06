@@ -838,6 +838,13 @@ private: // AllJoyn interfaces
                                hive::String(busName ? busName : ""),
                                hive::String(previousOwner ? previousOwner : ""),
                                hive::String(newOwner ? newOwner : "")));
+
+        if (previousOwner && !newOwner)
+        {
+            // do it on main thread!
+            m_ios.post(boost::bind(&Application::doSessionNameLost,
+                shared_from_this(), hive::String(previousOwner)));
+        }
     }
 
     virtual void SessionLost(ajn::SessionId sessionId, SessionLostReason reason)
@@ -924,6 +931,13 @@ private:
         return (i != m_peerNames.end()) ? i->second : hive::String();
     }
 
+    void doSessionNameLost(const hive::String &name)
+    {
+        HIVELOG_INFO(m_log_AJ, "lost session:" << name);
+        if (name == m_peerName && m_AJ_obj)
+            doSessionLost(m_AJ_obj->sessionRef());
+    }
+
     void doSessionLost(ajn::SessionId sessionId)
     {
         HIVELOG_INFO(m_log_AJ, "lost session id:" << sessionId);
@@ -935,6 +949,10 @@ private:
 
             sendAllJoynSessionStatus(0);
         }
+
+        cancelFindAdName(m_joinName); // just for case
+        if (!terminated())
+            findAdName(m_joinName);   // try to reconnect
     }
 
 private:
