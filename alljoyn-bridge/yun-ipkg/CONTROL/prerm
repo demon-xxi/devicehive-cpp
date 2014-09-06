@@ -1,0 +1,18 @@
+#!/bin/sh
+
+AJ_PROG="${PKG_ROOT}etc/init.d/devicehive-alljoyn"
+GW_PROG="${PKG_ROOT}etc/init.d/devicehive-gateway"
+BR_PROG="${PKG_ROOT}etc/init.d/devicehive-bridge"
+
+# stop gateway and bridge
+${AJ_PROG} stop > /dev/null 2>&1
+${BR_PROG} stop > /dev/null 2>&1
+${GW_PROG} stop > /dev/null 2>&1
+# TODO: wait for stop?
+
+# disable autostart
+${GW_PROG} enabled && ${GW_PROG} disable
+${BR_PROG} enabled && ${BR_PROG} disable
+${AJ_PROG} enabled && ${BR_PROG} disable
+
+exit 0

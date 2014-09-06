@@ -1,0 +1,12 @@
+Package: devicehive
+Version: 0.0.1
+Depends: libstdcpp
+Provides:
+Source: package/devicehive
+Section: misc
+Status: unknown ok not-installed
+Essential: no
+Priority: optional
+Maintainer: DataArt <dataart@dataart.com>
+Architecture: ar71xx
+Description:  DeviceHive and AllJoyn demo

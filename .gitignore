@@ -1,2 +1,5 @@
 # externals
 /externals
+
+*.user
+*-build-*

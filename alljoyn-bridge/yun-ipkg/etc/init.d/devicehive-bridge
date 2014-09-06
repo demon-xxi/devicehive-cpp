@@ -1,0 +1,42 @@
+#!/bin/sh /etc/rc.common
+# Copyright (C) 2014 DataArt
+
+ALLJOYN_ID=com.devicehive.demo.start
+
+START=99
+
+EXTRA_COMMANDS="status"
+EXTRA_HELP="
+        status  Check the bridge's alive status"
+
+PROG=/usr/bin/AJ_serial
+PID_F=/tmp/AJ_serial.pid
+
+start()
+{
+	# start daemon (if pid file doesn't exist)
+	# start-stop-daemon -q -S -p ${PID_F} -m -a ${PROG} -- --serial /dev/ttyATH0 --baudrate 115200 --join $ALLJOYN_ID &
+	start-stop-daemon -q -S -p ${PID_F} -m -a ${PROG} -- --host localhost --port 6571 --join $ALLJOYN_ID &
+
+	# in some cases Arduino is unable to initialize Bridge.Console library
+	# easiest solution is to reset Arduino a bit later...
+	sleep 5
+	/usr/bin/reset-mcu
+}
+
+
+stop()
+{
+	# stop daemon
+	start-stop-daemon -q -K -p ${PID_F}
+
+	# cleanup pid file
+	rm -f ${PID_F}
+}
+
+
+# alive status: 0 - alive, 1 - dead
+status()
+{
+	[ -f ${PID_F} ] && { ps -p `cat ${PID_F}` > /dev/null 2>&1; }
+}

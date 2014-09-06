@@ -1,0 +1,9 @@
+/AJ_serial
+/DH_alljoyn
+
+*.log
+*~
+yun.build
+*.ipk
+rpi.build
+*.deb

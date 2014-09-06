@@ -1850,6 +1850,7 @@ protected:
 #if !defined(HIVE_DISABLE_SSL)
         , m_context(boost::asio::ssl::context::sslv23)
 #endif // HIVE_DISABLE_SSL
+        , m_connCacheEnabled(true)
     {
 #if !defined(HIVE_DISABLE_SSL)
         m_context.set_options(boost::asio::ssl::context::default_workarounds);
@@ -2097,6 +2098,22 @@ public:
         m_connCache.clear();
     }
 
+
+    /// @brief Global enable keep-alive connections.
+    void enableKeepAliveConnections(bool enabled = true)
+    {
+        m_connCacheEnabled = enabled;
+        HIVELOG_INFO(m_log, "keep-alive connections are "
+                     << (enabled ? "ENABLED":"DISABLED"));
+    }
+
+
+    /// @brief Global disable keep-alive connections.
+    void disableKeepAliveConnections(bool disabled = true)
+    {
+        enableKeepAliveConnections(!disabled);
+    }
+
 private:
 
     /// @brief Finish the task.
@@ -2160,7 +2177,7 @@ private:
         m_taskList.remove(task);
 
         // cache the connection
-        if (!task->m_cancelled && isKeepAlive(task))        // if task is cancelled, its connection is closed
+        if (!task->m_cancelled && m_connCacheEnabled && isKeepAlive(task))  // if task is cancelled, its connection is closed
         if (ConnectionPtr pconn = task->takeConnection())
         {
             m_connCache.push_back(pconn);
@@ -3310,6 +3327,8 @@ private:
     /// @brief The connection list type.
     typedef std::list<ConnectionPtr> ConnList;
     ConnList m_connCache; ///< @brief The connection cache.
+
+    bool m_connCacheEnabled; ///< @brief The global keep-alive "enabled" flag.
 };
 
 /// @brief The HTTP client shared pointer type.

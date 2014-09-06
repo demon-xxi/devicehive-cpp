@@ -1,6 +1,25 @@
 This document is about porting DeviceHive to RaspberryPi
 
 
+Building boost (new version)
+============================
+
+Now the RPi toolchain is avaialble as a GIT repository. So just checkout it:
+  git clone https://github.com/raspberrypi/tools.git RPi-tools
+
+The boost sources are also avaiable as a GIT repository (it uses submodules):
+  git clone --recursive https://github.com/boostorg/boost.git
+
+Make the Raspberry Pi toolchain available:
+  export PATH=$PATH:~/RPi-tools/arm-bcm2708/gcc-linaro-arm-linux-gnueabihf-raspbian/bin
+  echo "using gcc : raspberry : arm-linux-gnueabihf-g++ ;" >> ~/user-config.jam
+
+And build the boost libraries:
+  cd ~/boost
+  ./bootstrap.sh --with-libraries=system,date_time
+  ./b2 toolset=gcc-raspberry
+
+
 Cross compilation
 =================
 

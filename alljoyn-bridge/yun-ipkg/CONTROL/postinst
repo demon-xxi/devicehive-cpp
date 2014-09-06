@@ -1,0 +1,7 @@
+#!/bin/sh
+
+AJ_PROG="${PKG_ROOT}etc/init.d/devicehive-alljoyn"
+GW_PROG="${PKG_ROOT}etc/init.d/devicehive-gateway"
+BR_PROG="${PKG_ROOT}etc/init.d/devicehive-bridge"
+
+exit 0

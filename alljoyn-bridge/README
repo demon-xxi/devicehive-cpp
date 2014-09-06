@@ -1,0 +1,141 @@
+DeviceHive (DH) and AllJoyn (AJ) integration demo
+=================================================
+
+AJ_serial - Serial to AllJoyn bridge
+DH_alljoyn - AllJoyn to DeviceHive gateway
+
+The overal connection is looks as:
+
+DH-server  <--(internet)-->   DH_alljoyn   <--(local net)-->   AJ_serial   <--(serial)-->   Arduino
+
+
+Requirements
+------------
+
+1) DeviceHive.
+2) Boost. To build boost you can use instructions from `devicehive-cpp/docs/getstarted.md` document
+3) AllJoyn. Download sources and build with the Scons tool
+
+
+To build examples you need to define a few environment variables:
+
+1) > export ALLJOYN_DIST=~/alljoyn/core/alljoyn/build/linux/x86/debug/dist/cpp
+2) > export LD_LIBRARY_PATH=$LD_LIBRARY_PATH:$ALLJOYN_DIST/lib
+
+It's important to start alljoyn-daemon before run examples:
+  > $ALLJOYN_DIST/bin/alljoyn-daemon --fork
+
+( if daemon fails try to run it without --fork key)
+
+
+DH_alljoyn
+----------
+
+To start gateway use the following command:
+  ./DH_alljoyn --service com.devicehive.samples.alljoyn.serial.test --server <playground URL>
+
+It starts AllJoyn service named "com.devicehive.samples.alljoyn.serial.test"
+and uses default playground URL for all new connections with no explicit URL provided.
+Now the clients can connect to that service.
+
+
+AJ_serial
+---------
+
+To start bridge use the following command:
+ ./AJ_serial --serial /dev/ttyACM0 --baudrate 115200 --join com.devicehive.samples.alljoyn.serial.test
+
+It will connect to the serial device and then to corresponding AllJoyn service "com.devicehive.samples.alljoyn.serial.test".
+Note that the service name is used as default if no explicit service name provided from Arduino (see below).
+All data frames came from AllJoyn are send to serial port and visa versa. The DeviceHive binary protocol is used
+to encode frame payload data.
+
+
+AllJoyn details
+---------------
+
+The only one AllJoyn signal is used - "data" with signature "is" which means that signal contains two arguments:
+1) integer "intent" (see DeviceHive binary protocol for more details on intents)
+2) and hexadecimal encoded string "payload"
+
+
+Arduino details
+---------------
+
+There is special mini-protocol between AJ_serial bridge and the Arduino device based on DeviceHive binary protocol.
+It contains a few dedicated intents:
+
+- 30001 - info request. no payload. is sent by AJ_serial bridge to the serial port once the serial port is open. Arduino device might report back with 30002 intent.
+- 30002 - info response. simple string as payload. Arduino device uses this frame to change AllJoyn channel name.
+- 30003 - session status. byte as payload. AJ_serial bridge send this notification to the serial port once the ALLJoyn session status is changed: connected (1) or diconnected (0).
+- 30004 - system exec. simple string as payload. Arduino device uses this frame to execute custom command on the HOST machine.
+          The command is executed by the AJ_serial bridge using system() system call. No execution result is provided back.
+
+
+
+Build on Yun
+------------
+
+Need to build rootfs and toolchain from https://github.com/arduino/openwrt-yun.git
+
+To build boost:
+ > echo "using gcc : yun : mips-openwrt-linux-g++ ;" >> ~/user-config.jam
+ > export PATH=$PATH:${OPENWRT_TOOLCHAIN}/bin
+ > cd ${BOOST_DIST}
+ > ./bootstrap.sh --with-libraries=system,date_time
+ > ./b2 toolset=gcc-yun variant=release
+ > cp ./stage/lib ~/devicehive-cpp/externals/lib.mips-yun
+
+Building AllJoyn package: https://wiki.allseenalliance.org/develop/building_and_running
+
+
+  > LIBS="-L/home/dataart/OpenWrt-SDK-ar71xx-for-linux-i686-gcc-4.6-linaro_uClibc-0.9.33.2/staging_dir/target-mips_r2_uClibc-0.9.33.2/usr/lib" \
+    CXXFLAGS="-I/home/dataart/OpenWrt-SDK-ar71xx-for-linux-i686-gcc-4.6-linaro_uClibc-0.9.33.2/staging_dir/target-mips_r2_uClibc-0.9.33.2/usr/include" \
+    make AJ_serial CROSS_COMPILE=mips-openwrt-linux- PLATFORM=mips-yun \
+    STAGING_DIR=~/OpenWrt-SDK-ar71xx-for-linux-i686-gcc-4.6-linaro_uClibc-0.9.33.2/staging_dir \
+    ALLJOYN_DIST=~/alljoyn/build/openwrt/openwrt/release/dist/cpp
+
+see make_yun.sh helper script...
+
+
+Build on RPi
+------------
+
+See this: https://www.alljoyn.org/forums/developers/building-alljoyn-linuxarmhttps://www.alljoyn.org/forums/developers/building-alljoyn-linuxarm
+
+To build boost:
+ > echo "using gcc : raspberry : arm-linux-gnueabihf-g++ ;" >> ~/user-config.jam
+ > export PATH=$PATH:${RPI_TOOLCHAIN}/bin
+ > ...
+
+
+To build alljoyn:
+ > edit /home/alljoyn/build_core/conf/linux/arm/SConscript:
+  #gcc_prefix  = '$OE_BASE/bin/arm-angstrom-linux-gnueabi-'
+  gcc_prefix  = '/home/dataart/RPi-tools/arm-bcm2708/gcc-linaro-arm-linux-gnueabihf-raspbian/bin/arm-linux-gnueabihf-'
+ >
+
+see make_rpi.sh helper script
+
+
+Install on Yun
+--------------
+
+copy the package to the Yun
+
+ > opkg install /tmp/devicehive....ipk
+ > /etc/init.g/devicehive-gateway enable # alljoyn daemon auto-start
+ > /etc/init.g/devicehive-bridge enable  # bridge auto-start
+
+
+Install on RPi
+--------------
+
+copy the package to the RPi
+
+ > dpkg -i /tmp/devicehive.deb
+ > update-rc.d devicehive-alljoyn defaults # alljoyn daemon auto-start
+ > update-rc.d devicehive-gateway defaults # gateway auto-start
+
+To disable auto-start:
+ > update-rc.d NAME_OF_INIT_SCRIPT remove

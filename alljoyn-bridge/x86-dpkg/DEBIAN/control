@@ -1,0 +1,8 @@
+Package: devicehive
+Version: 0.0.1
+Section: misc
+Priority: optional
+Architecture: i386
+Depends:
+Maintainer: DataArt <dataart@dataart.com>
+Description: AllJoyn and DeviceHive demo
