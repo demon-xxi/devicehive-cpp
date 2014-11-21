@@ -62,7 +62,8 @@ class Application:
     public basic_app::Application,
         public ajn::BusListener,
         public ajn::SessionListener,
-        public ajn::services::AnnounceHandler
+        public ajn::services::AnnounceHandler,
+        public devicehive::IDeviceServiceEvents
 {
     typedef basic_app::Application Base; ///< @brief The base type.
     typedef Application This; ///< @brief The type alias.
@@ -72,9 +73,8 @@ protected:
     /// @brief The default constructor.
     Application()
         : m_disableWebsockets(false)
+        , m_disableWebsocketPingPong(false)
         , m_web_timeout(0)
-        , m_http_major(1)
-        , m_http_minor(0)
         , m_log_AJ("AllJoyn")
     {}
 
@@ -94,12 +94,16 @@ public:
     {
         SharedPtr pthis(new This());
 
+        String gatewayId = "AJ_gateway1";
+        String gatewayKey = "4ce8e040-7175-11e4-82f8-0800200c9a66";
+
         String networkName = "C++ AllJoyn network";
         String networkKey = "";
         String networkDesc = "C++ device test network";
 
-        String baseUrl = "http://ecloud.dataart.com/ecapi8";
+        String baseUrl = "http://devicehive1-java/devicehive/rest";
         size_t web_timeout = 0; // zero - don't change
+        String http_version;
 
         bool http_keep_alive = true;
 
@@ -115,8 +119,8 @@ public:
                 std::cout << "\t--server <server URL>\n";
                 std::cout << "\t--web-timeout <timeout, seconds>\n";
                 std::cout << "\t--no-ws disable automatic websocket service switching\n";
-                std::cout << "\t--http-maj <major version> the HTTP major version\n";
-                std::cout << "\t--http-min <minor version> the HTTP minor version\n";
+                std::cout << "\t--no-ws-ping-pong disable websocket ping/pong messages\n";
+                std::cout << "\t--http-version <major.minor HTTP version>\n";
                 std::cout << "\t--http-no-keep-alive disable keep-alive connections\n";
                 std::cout << "\t--log <log file name>\n"; // see below in main()
 
@@ -132,17 +136,21 @@ public:
                 baseUrl = argv[++i];
             else if (boost::algorithm::iequals(argv[i], "--web-timeout") && i+1 < argc)
                 web_timeout = boost::lexical_cast<UInt32>(argv[++i]);
+            else if (boost::algorithm::iequals(argv[i], "--http-version") && i+1 < argc)
+                http_version = argv[++i];
             else if (boost::iequals(argv[i], "--no-ws"))
                 pthis->m_disableWebsockets = true;
-            else if (boost::algorithm::iequals(argv[i], "--http-maj") && i+1 < argc)
-                pthis->m_http_major = boost::lexical_cast<int>(argv[++i]);
-            else if (boost::algorithm::iequals(argv[i], "--http-min") && i+1 < argc)
-                pthis->m_http_minor = boost::lexical_cast<int>(argv[++i]);
+            else if (boost::iequals(argv[i], "--no-ws-ping-pong"))
+                pthis->m_disableWebsocketPingPong = true;
             else if (boost::iequals(argv[i], "--http-no-keep-alive"))
                 http_keep_alive = false;
         }
 
         pthis->m_network = devicehive::Network::create(networkName, networkKey, networkDesc);
+        pthis->m_gw_dev = devicehive::Device::create(gatewayId, "AllJoyn gateway connector", gatewayKey,
+                                                     devicehive::Device::Class::create("AllJyon gateway", "0.1"),
+                                                     pthis->m_network);
+        pthis->m_gw_dev->status = "Online";
         pthis->m_defaultBaseUrl =  baseUrl;
         pthis->m_web_timeout = web_timeout;
 
@@ -150,6 +158,44 @@ public:
         pthis->m_http->enableKeepAliveConnections(http_keep_alive);
 
         pthis->AJ_init();
+
+        if (1) // create service
+        {
+            http::Url url(baseUrl);
+
+            if (boost::iequals(url.getProtocol(), "ws")
+                || boost::iequals(url.getProtocol(), "wss"))
+            {
+                if (pthis->m_disableWebsockets)
+                    throw std::runtime_error("websockets are disabled by --no-ws switch");
+
+                HIVELOG_INFO_STR(pthis->m_log, "WebSocket service is used");
+                devicehive::WebsocketService::SharedPtr service = devicehive::WebsocketService::create(
+                    http::Client::create(pthis->m_ios), baseUrl, pthis);
+                service->setPingPongEnabled(!pthis->m_disableWebsocketPingPong);
+                if (0 < web_timeout)
+                    service->setTimeout(web_timeout*1000); // seconds -> milliseconds
+
+                pthis->m_service = service;
+            }
+            else
+            {
+                HIVELOG_INFO_STR(pthis->m_log, "RESTful service is used");
+                devicehive::RestfulService::SharedPtr service = devicehive::RestfulService::create(
+                    http::Client::create(pthis->m_ios), baseUrl, pthis);
+                if (0 < web_timeout)
+                    service->setTimeout(web_timeout*1000); // seconds -> milliseconds
+                if (!http_version.empty())
+                {
+                    int major = 1, minor = 1;
+                    parseVersion(http_version, major, minor);
+                    service->setHttpVersion(major, minor);
+                }
+
+                pthis->m_service = service;
+            }
+        }
+
         return pthis;
     }
 
@@ -198,6 +244,8 @@ protected:
     virtual void start()
     {
         Base::start();
+
+        m_service->asyncConnect();
     }
 
 
@@ -206,6 +254,8 @@ protected:
      */
     virtual void stop()
     {
+        m_service->cancelAll();
+
         HIVELOG_INFO(m_log_AJ, "disconnecting BUS: " << m_AJ_bus->GetUniqueName().c_str());
         QStatus status = m_AJ_bus->Disconnect();
         AJ_check(status, "failed to disconnect AllJoyn bus");
@@ -215,6 +265,119 @@ protected:
         AJ_check(status, "failed to stop bus attachment");
 
         Base::stop();
+    }
+
+
+private: // devicehive::IDeviceServiceEvents
+
+    /// @copydoc devicehive::IDeviceServiceEvents::onConnected()
+    virtual void onConnected(ErrorCode err)
+    {
+        HIVELOG_TRACE_BLOCK(m_log, "onConnected()");
+
+        if (!err)
+        {
+            HIVELOG_INFO_STR(m_log, "connected to the server");
+            m_service->asyncGetServerInfo();
+        }
+        else
+            handleError(err, "connection");
+    }
+
+
+    /// @copydoc devicehive::IDeviceServiceEvents::onServerInfo()
+    virtual void onServerInfo(boost::system::error_code err, devicehive::ServerInfo info)
+    {
+        if (!err)
+        {
+            m_lastCommandTimestamp = info.timestamp;
+
+            // try to switch to websocket protocol
+            if (!m_disableWebsockets && !info.alternativeUrl.empty())
+                if (devicehive::RestfulService::SharedPtr rest = boost::dynamic_pointer_cast<devicehive::RestfulService>(m_service))
+            {
+                HIVELOG_INFO(m_log, "switching to Websocket service: " << info.alternativeUrl);
+                rest->cancelAll();
+
+                devicehive::WebsocketService::SharedPtr service = devicehive::WebsocketService::create(
+                    rest->getHttpClient(), info.alternativeUrl, shared_from_this());
+                service->setPingPongEnabled(!m_disableWebsocketPingPong);
+                service->setTimeout(rest->getTimeout());
+                m_service = service;
+
+                // connect again as soon as possible
+                m_delayed->callLater(boost::bind(&devicehive::IDeviceService::asyncConnect, m_service));
+                return;
+            }
+
+            m_service->asyncRegisterDevice(m_gw_dev);
+        }
+        else
+            handleError(err, "getting server info");
+    }
+
+
+    /// @copydoc devicehive::IDeviceServiceEvents::onRegisterDevice()
+    virtual void onRegisterDevice(boost::system::error_code err, devicehive::DevicePtr device)
+    {
+        if (!err)
+        {
+            m_service->asyncSubscribeForCommands(m_gw_dev, m_lastCommandTimestamp);
+            // TODO: notify pending announces
+        }
+        else
+            handleError(err, "registering device");
+    }
+
+
+    /// @copydoc devicehive::IDeviceServiceEvents::onInsertCommand()
+    virtual void onInsertCommand(ErrorCode err, devicehive::DevicePtr device, devicehive::CommandPtr command)
+    {
+        if (!err)
+        {
+            m_lastCommandTimestamp = command->timestamp;
+            bool processed = true;
+
+            try
+            {
+                throw std::runtime_error("unknown command");
+            }
+            catch (std::exception const& ex)
+            {
+                HIVELOG_ERROR(m_log, "handle command error: "
+                    << ex.what());
+
+                command->status = "Failed";
+                command->result = ex.what();
+            }
+
+            if (processed)
+                m_service->asyncUpdateCommand(device, command);
+        }
+        else
+            handleError(err, "polling command");
+    }
+
+private:
+
+    /// @brief Handle the communication error.
+    /**
+    @param[in] err The error code.
+    @param[in] hint The custom hint.
+    */
+    void handleError(boost::system::error_code err, const char *hint)
+    {
+        if (!terminated())
+        {
+            HIVELOG_ERROR(m_log, (hint ? hint : "something")
+                << " failed: [" << err << "] " << err.message());
+
+            m_service->cancelAll();
+
+            HIVELOG_DEBUG_STR(m_log, "try to connect later...");
+            m_delayed->callLater(SERVER_RECONNECT_TIMEOUT,
+                boost::bind(&devicehive::IDeviceService::asyncConnect, m_service));
+        }
     }
 
 private: // ajn::BusListener interface
@@ -322,14 +485,15 @@ private: // ajn::services::AnnounceHandler
 
 private:
     bool m_disableWebsockets;       ///< @brief No automatic websocket switch.
+    bool m_disableWebsocketPingPong; ///< @brief Disable websocket PING/PONG messages.
     http::ClientPtr m_http;
 
+    devicehive::IDeviceServicePtr m_service; ///< @brief The cloud service.
     devicehive::NetworkPtr m_network;
+    devicehive::DevicePtr m_gw_dev;  // gateway device
+    String m_lastCommandTimestamp; ///< @brief The timestamp of the last received command.
     String m_defaultBaseUrl;
     int m_web_timeout;
-
-    int m_http_major;
-    int m_http_minor;
 
 private:
     boost::shared_ptr<ajn::BusAttachment> m_AJ_bus;
