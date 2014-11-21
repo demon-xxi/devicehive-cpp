@@ -120,6 +120,15 @@ private:
                          << mb->signature << "\", returnSignature:\"" << mb->returnSignature << "\", argNames:\""
                             << mb->argNames << "\", description:\"" << mb->description << "\"\n";
         }
+
+        const ajn::InterfaceDescription::Property* properties[1024];
+        int m = iface->GetProperties(properties, 1024);
+        for (int i = 0; i < m; ++i)
+        {
+            const ajn::InterfaceDescription::Property *p = properties[i];
+            std::cerr << "\t\tproperty name:\"" << p->name << "\", signature:\""
+                         << p->signature << "\", description:\"" << p->description << "\"\n";
+        }
     }
 
 private:

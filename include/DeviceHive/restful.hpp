@@ -102,21 +102,6 @@ public:
 
 public:
 
-
-    /// @brief Set HTTP version.
-    /**
-    @param[in] major The HTTP major version.
-    @param[in] minor The HTTP minor version.
-    */
-    This& setHttpVersion(int major, int minor)
-    {
-        m_http_major = major;
-        m_http_minor = minor;
-        return *this;
-    }
-
-public:
-
     /// @brief Get HTTP client.
     /**
     @return The HTTP client.

@@ -22,14 +22,14 @@ HEADERS += $${PWD}/../include/hive/log.hpp
 HEADERS += $${PWD}/AJ_serial.hpp
 #SOURCES += $${PWD}/AJ_serial.cpp
 HEADERS += $${PWD}/DH_alljoyn.hpp
-#SOURCES += $${PWD}/DH_alljoyn.cpp
+SOURCES += $${PWD}/DH_alljoyn.cpp
 HEADERS += $${PWD}/hexUtils.hpp
-SOURCES += $${PWD}/test.cpp
+#SOURCES += $${PWD}/test.cpp
 
 LIBS += -L$${AJ_CORE_CPP}/lib -lalljoyn \
     -L$${AJ_CORE_CPP}/lib -lalljoyn_about \
     $${PWD}/../externals/lib.i686/libboost_system.a \
-   -lstdc++ -lcrypto -lpthread -lrt
+   -lstdc++ -lcrypto -lssl -lpthread -lrt
 
 
 OTHER_FILES += $${PWD}/README
