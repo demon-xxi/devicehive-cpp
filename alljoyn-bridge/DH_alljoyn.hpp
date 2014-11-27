@@ -74,6 +74,7 @@ protected:
     Application()
         : m_disableWebsockets(false)
         , m_disableWebsocketPingPong(false)
+        , m_gw_dev_registered(false)
         , m_web_timeout(0)
         , m_log_AJ("AllJoyn")
     {}
@@ -323,7 +324,9 @@ private: // devicehive::IDeviceServiceEvents
         if (!err)
         {
             m_service->asyncSubscribeForCommands(m_gw_dev, m_lastCommandTimestamp);
-            // TODO: notify pending announces
+            m_gw_dev_registered = true;
+
+            sendPendingAnnouncements();
         }
         else
             handleError(err, "registering device");
@@ -340,7 +343,29 @@ private: // devicehive::IDeviceServiceEvents
 
             try
             {
-                throw std::runtime_error("unknown command");
+                if (command->name == "call")
+                {
+                    const json::Value &p = command->params;
+
+                    String bus = p["bus"].asString();
+                    int port = p["port"].asInt();
+                    String obj = p["object"].asString();
+                    String iface = p["iface"].asString();
+                    String method = p["method"].asString();
+
+                    json::Value arg = p["arg"];
+                    json::Value res;
+
+                    AJ_BusProxyPtr pBusProxy = getBusProxy(bus, port);
+                    AJ_ObjProxyPtr pObjProxy = getObjProxy(pBusProxy, obj);
+
+                    String status = pObjProxy->callMethod(iface, method, arg, &res);
+
+                    command->status = status;
+                    command->result = res;
+                }
+                else
+                    throw std::runtime_error("unknown command");
             }
             catch (std::exception const& ex)
             {
@@ -373,6 +398,7 @@ private:
                 << " failed: [" << err << "] " << err.message());
 
             m_service->cancelAll();
+            m_gw_dev_registered = false;
 
             HIVELOG_DEBUG_STR(m_log, "try to connect later...");
             m_delayed->callLater(SERVER_RECONNECT_TIMEOUT,
@@ -447,6 +473,22 @@ private: // ajn::SessionListener interface
 
 private: // ajn::services::AnnounceHandler
 
+    /**
+     * @brief Announce information.
+     */
+    struct AnnounceInfo
+    {
+        String busName;
+        int port;
+
+        typedef std::vector<String> InterfaceList;
+        std::map<String, InterfaceList> objects;
+
+        AnnounceInfo()
+            : port(0)
+        {}
+    };
+
     virtual void Announce(uint16_t version, uint16_t port, const char* busName,
                           const ObjectDescriptions& objectDescs,
                           const AboutData& aboutData)
@@ -454,33 +496,284 @@ private: // ajn::services::AnnounceHandler
         HIVELOG_INFO(m_log_AJ, "Announce version:" << version << ", port:" << port
                   << ", bus:\"" << busName << "\"");
 
-        String bus_name(busName);
-        std::map<String, std::vector<String> > objects;
+        AnnounceInfo info;
+        info.busName = busName;
+        info.port = port;
 
         ObjectDescriptions::const_iterator od = objectDescs.begin();
         for (; od != objectDescs.end(); ++od)
         {
             // copy interface names
-            std::vector<String> interfaces;
+            AnnounceInfo::InterfaceList interfaces;
             interfaces.reserve(od->second.size());
             for (size_t i = 0; i < od->second.size(); ++i)
                 interfaces.push_back(od->second[i].c_str());
 
             String obj_name = od->first.c_str();
-            objects[obj_name] = interfaces;
+            info.objects[obj_name] = interfaces;
         }
         HIVE_UNUSED(aboutData);
 
         // do processing on main thread!
-        m_ios.post(boost::bind(&This::safeAnnounce, shared_from_this(),
-                               bus_name, port, objects));
+        m_ios.post(boost::bind(&This::safeAnnounce, shared_from_this(), info));
     }
 
-    void safeAnnounce(const String busName, int port, const std::map<String, std::vector<String> > &objs)
+    void safeAnnounce(const AnnounceInfo &info)
     {
-        HIVE_UNUSED(busName);
-        HIVE_UNUSED(port);
-        HIVE_UNUSED(objs);
+        if (m_gw_dev_registered)
+            sendAnnounceNotification(info);
+        else
+            m_pendgingAnnouncements.push_back(info);
+    }
+
+private:
+    std::vector<AnnounceInfo> m_pendgingAnnouncements;
+
+    /**
+     * @brief Send all pending announcements.
+     */
+    void sendPendingAnnouncements()
+    {
+        for (size_t i = 0; i < m_pendgingAnnouncements.size(); ++i)
+            sendAnnounceNotification(m_pendgingAnnouncements[i]);
+        m_pendgingAnnouncements.clear();
+    }
+
+    /**
+     * @brief send Announce notification.
+     */
+    void sendAnnounceNotification(const AnnounceInfo &info)
+    {
+        json::Value params;
+        params["bus"] = info.busName;
+        params["port"] = info.port;
+
+        AJ_BusProxyPtr pBusProxy = getBusProxy(info.busName, info.port);
+
+        typedef std::map<String,AnnounceInfo::InterfaceList>::const_iterator Iterator;
+        for (Iterator i = info.objects.begin(); i != info.objects.end(); ++i)
+        {
+            const String name = i->first;
+            AJ_ObjProxyPtr pObjProxy = getObjProxy(pBusProxy, name);
+            params["objects"][name]["interfaces"] = pObjProxy->getInterfaces();
+        }
+
+        m_service->asyncInsertNotification(m_gw_dev, devicehive::Notification::create("Announce", params));
+    }
+
+private: // AllJoyn bus structure
+
+    class AJ_BusProxy;
+    class AJ_ObjProxy;
+
+    typedef boost::shared_ptr<AJ_BusProxy> AJ_BusProxyPtr;
+    typedef boost::shared_ptr<AJ_ObjProxy> AJ_ObjProxyPtr;
+
+    class AJ_BusProxy
+    {
+    private:
+        AJ_BusProxy(boost::shared_ptr<ajn::BusAttachment> bus, const String &name, int port, ajn::SessionListener *listener)
+            : m_bus(bus)
+            , m_name(name)
+            , m_port(port)
+            , m_sessionId(0)
+        {
+            ajn::SessionOpts opts(ajn::SessionOpts::TRAFFIC_MESSAGES, false/*multipoint*/,
+                                  ajn::SessionOpts::PROXIMITY_ANY, ajn::TRANSPORT_ANY);
+
+            QStatus status = m_bus->JoinSession(m_name.c_str(), m_port, listener, m_sessionId, opts);
+            AJ_check(status, "cannot join session");
+        }
+
+    public:
+        ~AJ_BusProxy()
+        {
+            m_bus->LeaveSession(m_sessionId);
+        }
+
+    public:
+        typedef boost::shared_ptr<AJ_BusProxy> SharedPtr;
+
+        static SharedPtr create(boost::shared_ptr<ajn::BusAttachment> bus, const String &name, int port, ajn::SessionListener *listener)
+        {
+            return SharedPtr(new AJ_BusProxy(bus, name, port, listener));
+        }
+
+    private:
+    public:
+        boost::shared_ptr<ajn::BusAttachment> m_bus;
+        String m_name;
+        int m_port;
+
+        ajn::SessionId m_sessionId;
+
+    public:
+        std::vector<AJ_ObjProxyPtr> m_obj_proxies;
+    };
+
+
+    class AJ_ObjProxy
+    {
+    private:
+        AJ_ObjProxy(AJ_BusProxyPtr pBusProxy, const String &name)
+            : m_name(name)
+            , m_proxy(*pBusProxy->m_bus,
+                      pBusProxy->m_name.c_str(),
+                      m_name.c_str(),
+                      pBusProxy->m_sessionId,
+                      false)
+            , m_pBusProxy(pBusProxy)
+        {
+            if (m_proxy.IsValid())
+            {
+                QStatus status = m_proxy.IntrospectRemoteObject();
+                AJ_check(status, "cannot introspect remote object");
+            }
+        }
+
+    public:
+        typedef boost::shared_ptr<AJ_ObjProxy> SharedPtr;
+
+        static SharedPtr create(AJ_BusProxyPtr pBusProxy, const String &name)
+        {
+            return SharedPtr(new AJ_ObjProxy(pBusProxy, name));
+        }
+
+    public:
+
+        json::Value getInterfaces() const
+        {
+            const int N = 1024;
+            json::Value res;
+
+            const ajn::InterfaceDescription* ifaces[N];
+            int n = m_proxy.GetInterfaces(ifaces, N);
+            for (int i = 0; i < n; ++i)
+            {
+                const ajn::InterfaceDescription *iface = ifaces[i];
+                const String name = iface->GetName();
+                res[name] = getInterface(name);
+            }
+
+            return res;
+        }
+
+        json::Value getInterface(const String &name) const
+        {
+            const int N = 1024;
+            json::Value res;
+
+            const ajn::InterfaceDescription *iface = m_proxy.GetInterface(name.c_str());
+            if (!iface)
+                return res;
+
+            const ajn::InterfaceDescription::Member* members[N];
+            int n = iface->GetMembers(members, N);
+            for (int i = 0; i < n; ++i)
+            {
+                const ajn::InterfaceDescription::Member *mb = members[i];
+                const String name = mb->name.c_str();
+
+                json::Value info;
+                info["signature"] = String(mb->signature.c_str());
+                info["returnSignature"] = String(mb->returnSignature.c_str());
+                info["argNames"] = String(mb->argNames.c_str());
+
+                if (mb->memberType == ajn::MESSAGE_METHOD_CALL)
+                    res["methods"][name] = info;
+                else if (mb->memberType == ajn::MESSAGE_SIGNAL)
+                    res["signals"][name] = info;
+            }
+
+            const ajn::InterfaceDescription::Property* properties[N];
+            int m = iface->GetProperties(properties, N);
+            for (int i = 0; i < m; ++i)
+            {
+                const ajn::InterfaceDescription::Property *p = properties[i];
+                const String name = p->name.c_str();
+
+                json::Value info;
+                info["signature"] = String(p->signature.c_str());
+                if (p->access == ajn::PROP_ACCESS_READ)
+                    info["access"] = "read-only";
+                else if (p->access == ajn::PROP_ACCESS_WRITE)
+                    info["access"] = "write-only";
+                else if (p->access == ajn::PROP_ACCESS_RW)
+                    info["access"] = "read-write";
+
+                res["properties"][name] = info;
+            }
+
+            return res;
+        }
+
+    public:
+
+        String callMethod(const String &ifaceName, const String &methodName,
+                          const json::Value &arg, json::Value *res)
+        {
+            const ajn::InterfaceDescription *iface = m_proxy.GetInterface(ifaceName.c_str());
+            if (!iface)
+                return "FAIL: no interface";
+
+            const size_t n_args = 2;
+            ajn::MsgArg args[n_args];
+            args[0].Set("u", arg.asUInt32());
+            args[1].Set("u", arg.asUInt32());
+            ajn::Message reply(*m_pBusProxy->m_bus);
+
+            QStatus status = m_proxy.MethodCall(ifaceName.c_str(),
+                                                methodName.c_str(),
+                                                args, n_args, reply);
+            if (ER_OK == status)
+            {
+                *res = reply->GetArg(0)->v_uint32;
+            }
+
+            return String(QCC_StatusText(status));
+        }
+
+    private:
+    public:
+        String m_name; // object name
+        ajn::ProxyBusObject m_proxy;
+        AJ_BusProxyPtr m_pBusProxy;
+    };
+
+private:
+    std::vector<AJ_BusProxyPtr> m_bus_proxies;
+
+    AJ_BusProxyPtr getBusProxy(const String &busName, int port)
+    {
+        const size_t n = m_bus_proxies.size();
+        for (size_t i = 0; i < n; ++i)
+        {
+            AJ_BusProxyPtr p = m_bus_proxies[i];
+            if (p->m_name == busName
+             && p->m_port == port)
+                return p;
+        }
+
+        // insert new
+        AJ_BusProxyPtr p = AJ_BusProxy::create(m_AJ_bus, busName, port, this);
+        m_bus_proxies.push_back(p);
+        return p;
+    }
+
+    AJ_ObjProxyPtr getObjProxy(AJ_BusProxyPtr pBusProxy, const String &objName)
+    {
+        const size_t n = pBusProxy->m_obj_proxies.size();
+        for (size_t i = 0; i < n; ++i)
+        {
+            AJ_ObjProxyPtr p = pBusProxy->m_obj_proxies[i];
+            if (p->m_name == objName)
+                return p;
+        }
+
+        // insert new
+        AJ_ObjProxyPtr p = AJ_ObjProxy::create(pBusProxy, objName);
+        pBusProxy->m_obj_proxies.push_back(p);
+        return p;
     }
 
 private:
@@ -491,6 +784,7 @@ private:
     devicehive::IDeviceServicePtr m_service; ///< @brief The cloud service.
     devicehive::NetworkPtr m_network;
     devicehive::DevicePtr m_gw_dev;  // gateway device
+    bool m_gw_dev_registered;
     String m_lastCommandTimestamp; ///< @brief The timestamp of the last received command.
     String m_defaultBaseUrl;
     int m_web_timeout;
