@@ -714,26 +714,227 @@ private: // AllJoyn bus structure
         {
             const ajn::InterfaceDescription *iface = m_proxy.GetInterface(ifaceName.c_str());
             if (!iface)
-                return "FAIL: no interface";
+                throw std::runtime_error("no interface found");
 
-            const size_t n_args = 2;
-            ajn::MsgArg args[n_args];
-            args[0].Set("u", arg.asUInt32());
-            args[1].Set("u", arg.asUInt32());
+            const ajn::InterfaceDescription::Member *func = iface->GetMember(methodName.c_str());
+            if (!func)
+                throw std::runtime_error("no method found");
+
+            ArgInfo meta(func->signature.c_str(),
+                         func->returnSignature.c_str(),
+                         func->argNames.c_str());
+
+            std::cerr << "CALL: " << ifaceName << "." << methodName
+                         << " with \"" << meta.argSign << "\"-\""
+                            << meta.retSign << "\n";
+            std::vector<ajn::MsgArg> args = AJ_fromJson(arg, meta);
             ajn::Message reply(*m_pBusProxy->m_bus);
 
-            QStatus status = m_proxy.MethodCall(ifaceName.c_str(),
-                                                methodName.c_str(),
-                                                args, n_args, reply);
+            // TODO: do it in async way
+            QStatus status = m_proxy.MethodCall(ifaceName.c_str(), methodName.c_str(),
+                                                &args[0], args.size(), reply);
             if (ER_OK == status)
             {
-                *res = reply->GetArg(0)->v_uint32;
+                const ajn::MsgArg* raw_args = 0;
+                size_t N_args = 0;
+                reply->GetArgs(N_args, raw_args);
+
+                std::vector<ajn::MsgArg> ret_args(raw_args, raw_args + N_args);
+                *res = AJ_toJson(ret_args, meta, args.size());
             }
 
             return String(QCC_StatusText(status));
         }
 
-    private:
+    public:
+
+        struct ArgInfo
+        {
+            String argSign;
+            String retSign;
+
+            std::vector<String> names;
+
+            ArgInfo(const String &arg_s,
+                    const String &ret_s,
+                    const String &names)
+                : argSign(arg_s)
+                , retSign(ret_s)
+            {
+                boost::split(this->names, names,
+                             boost::is_any_of(","));
+            }
+
+            String getArgName(size_t i) const
+            {
+                if (i < names.size())
+                    return names[i];
+
+                hive::OStringStream oss;
+                oss << "#" << i;
+                return oss.str();
+            }
+        };
+
+        /**
+         * @brief Convert JSON to AllJoyn message.
+         * @return List of MsgArg.
+         *
+         * Uses argSign.
+         */
+        std::vector<ajn::MsgArg> AJ_fromJson(const json::Value &val, const ArgInfo &meta)
+        {
+            std::vector<ajn::MsgArg> res;
+
+            const String &sign = meta.argSign;
+            for (int i = 0; i < sign.size(); ++i)
+            {
+                String name = meta.getArgName(i);
+                const char s = sign[i];
+                ajn::MsgArg arg;
+
+                switch (s)
+                {
+                    case 'b': arg.Set("b", val[name].asBool()); break;
+                    case 'y': arg.Set("y", val[name].asUInt8()); break;
+                    case 'q': arg.Set("q", val[name].asUInt16()); break;
+                    case 'n': arg.Set("n", val[name].asInt16()); break;
+                    case 'u': arg.Set("u", val[name].asUInt32()); break;
+                    case 'i': arg.Set("i", val[name].asInt32()); break;
+                    case 't': arg.Set("t", val[name].asUInt64()); break;
+                    case 'x': arg.Set("x", val[name].asInt64()); break;
+                    case 'd': arg.Set("d", val[name].asDouble()); break;
+                    case 's':
+                    {
+                        String str = val[name].asString();
+                        arg.Set("s", str.c_str());
+                        arg.Stabilize();
+                    } break;
+
+                    case 'a': case 'e':
+                    case 'r': case 'v':
+                    case '(': case ')':
+                    case '{': case '}':
+                    default:
+                    {
+                        hive::OStringStream oss;
+                        oss << "\"" << s << "\" is unsupported signature";
+                        throw std::runtime_error(oss.str());
+                    } break;
+                }
+
+                res.push_back(arg);
+            }
+
+            return res;
+        }
+
+
+        /**
+         * @brief Convert AllJoyn messages to JSON.
+         * @return The JSON value.
+         *
+         * Uses retSign.
+         */
+        json::Value AJ_toJson(const std::vector<ajn::MsgArg> &args, const ArgInfo &meta, size_t arg_offset = 0)
+        {
+            json::Value res;
+
+            const String &sign = meta.retSign;
+            for (int i = 0; i < sign.size(); ++i)
+            {
+                String name = meta.getArgName(i+arg_offset);
+                ajn::MsgArg arg = (i < args.size()) ? args[i] : ajn::MsgArg();
+                const char s = sign[i];
+
+                switch (s)
+                {
+                    case 'b':
+                    {
+                        bool r = false;
+                        arg.Get("b", &r);
+                        res[name] = r;
+                    } break;
+
+                    case 'y':
+                    {
+                        uint8_t r = 0;
+                        arg.Get("y", &r);
+                        res[name] = r;
+                    } break;
+
+                    case 'q':
+                    {
+                        uint16_t r = 0;
+                        arg.Get("q", &r);
+                        res[name] = r;
+                    } break;
+
+                    case 'n':
+                    {
+                        int16_t r = 0;
+                        arg.Get("n", &r);
+                        res[name] = r;
+                    } break;
+
+                    case 'u':
+                    {
+                        uint32_t r = 0;
+                        arg.Get("u", &r);
+                        res[name] = r;
+                    } break;
+
+                    case 'i':
+                    {
+                        int32_t r = 0;
+                        arg.Get("i", &r);
+                        res[name] = r;
+                    } break;
+
+                    case 't':
+                    {
+                        uint64_t r = 0;
+                        arg.Get("t", &r);
+                        res[name] = r;
+                    } break;
+
+                    case 'x':
+                    {
+                        int64_t r = 0;
+                        arg.Get("x", &r);
+                        res[name] = r;
+                    } break;
+
+                    case 'd':
+                    {
+                        double r = 0.0;
+                        arg.Get("d", &r);
+                        res[name] = r;
+                    } break;
+
+                    case 's':
+                    {
+                        char *str = 0;
+                        arg.Get("s", &str);
+                        res[name] = String(str);
+                    } break;
+
+                    case 'a': case 'e':
+                    case 'r': case 'v':
+                    case '(': case ')':
+                    case '{': case '}':
+                    default:
+                    {
+                        hive::OStringStream oss;
+                        oss << "\"" << s << "\" is unsupported signature";
+                        throw std::runtime_error(oss.str());
+                    } break;
+                }
+            }
+
+            return res;
+        }
+
     public:
         String m_name; // object name
         ajn::ProxyBusObject m_proxy;
