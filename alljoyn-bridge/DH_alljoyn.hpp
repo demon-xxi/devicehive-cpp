@@ -364,6 +364,44 @@ private: // devicehive::IDeviceServiceEvents
                     command->status = status;
                     command->result = res;
                 }
+                else if (command->name == "get-prop")
+                {
+                    const json::Value &p = command->params;
+
+                    String bus = p["bus"].asString();
+                    int port = p["port"].asInt();
+                    String obj = p["object"].asString();
+                    String iface = p["iface"].asString();
+                    String property = p["property"].asString();
+
+                    json::Value res;
+
+                    AJ_BusProxyPtr pBusProxy = getBusProxy(bus, port);
+                    AJ_ObjProxyPtr pObjProxy = getObjProxy(pBusProxy, obj);
+
+                    String status = pObjProxy->getProperty(iface, property, &res);
+                    command->status = status;
+                    command->result = res;
+                }
+                else if (command->name == "set-prop")
+                {
+                    const json::Value &p = command->params;
+
+                    String bus = p["bus"].asString();
+                    int port = p["port"].asInt();
+                    String obj = p["object"].asString();
+                    String iface = p["iface"].asString();
+                    String property = p["property"].asString();
+
+                    json::Value arg = p["arg"];
+
+                    AJ_BusProxyPtr pBusProxy = getBusProxy(bus, port);
+                    AJ_ObjProxyPtr pObjProxy = getObjProxy(pBusProxy, obj);
+
+                    String status = pObjProxy->setProperty(iface, property, arg);
+                    command->status = status;
+                    command->result = json::Value::null();
+                }
                 else
                     throw std::runtime_error("unknown command");
             }
@@ -743,6 +781,60 @@ private: // AllJoyn bus structure
                 *res = AJ_toJson(ret_args, meta, args.size());
             }
 
+            return String(QCC_StatusText(status));
+        }
+
+        String getProperty(const String &ifaceName, const String &propertyName, json::Value *res)
+        {
+            const ajn::InterfaceDescription *iface = m_proxy.GetInterface(ifaceName.c_str());
+            if (!iface)
+                throw std::runtime_error("no interface found");
+
+            const ajn::InterfaceDescription::Property *prop = iface->GetProperty(propertyName.c_str());
+            if (!prop)
+                throw std::runtime_error("no property found");
+            if ((prop->access&ajn::PROP_ACCESS_READ) == 0)
+                throw std::runtime_error("property is not readable");
+
+            ArgInfo meta("", prop->signature.c_str(), propertyName);
+
+            std::cerr << "GET-PROP: " << ifaceName << "." << propertyName
+                         << " with \"" << meta.retSign << "\n";
+            std::vector<ajn::MsgArg> ret_args(1);
+
+            // TODO: do it in async way
+            QStatus status = m_proxy.GetProperty(ifaceName.c_str(), propertyName.c_str(), ret_args[0]);
+            if (ER_OK == status)
+            {
+                *res = AJ_toJson(ret_args, meta, 0);
+            }
+
+            return String(QCC_StatusText(status));
+        }
+
+        String setProperty(const String &ifaceName, const String &propertyName, const json::Value &arg)
+        {
+            const ajn::InterfaceDescription *iface = m_proxy.GetInterface(ifaceName.c_str());
+            if (!iface)
+                throw std::runtime_error("no interface found");
+
+            const ajn::InterfaceDescription::Property *prop = iface->GetProperty(propertyName.c_str());
+            if (!prop)
+                throw std::runtime_error("no property found");
+            if ((prop->access&ajn::PROP_ACCESS_WRITE) == 0)
+                throw std::runtime_error("property is not writable");
+
+            ArgInfo meta(prop->signature.c_str(), "", propertyName);
+
+            std::cerr << "SET-PROP: " << ifaceName << "." << propertyName
+                         << " with \"" << meta.argSign << "\"\n";
+            std::vector<ajn::MsgArg> args = AJ_fromJson(arg, meta);
+
+            if (args.size() != 1)
+                throw std::runtime_error("no value parsed");
+
+            // TODO: do it in async way
+            QStatus status = m_proxy.SetProperty(ifaceName.c_str(), propertyName.c_str(), args[0]);
             return String(QCC_StatusText(status));
         }
 
