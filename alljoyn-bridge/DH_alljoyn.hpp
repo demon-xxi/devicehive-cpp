@@ -224,7 +224,7 @@ private:
         HIVELOG_TRACE(m_log_AJ, "connecting");
         status = m_AJ_bus->Connect();
         AJ_check(status, "failed to connect AllJoyn bus");
-        HIVELOG_INFO(m_log_AJ, "connected to BUS: \""
+        HIVELOG_INFO(m_log_AJ, "connected to bus:\""
             << m_AJ_bus->GetUniqueName().c_str() << "\"");
     }
 
@@ -338,11 +338,42 @@ private: // devicehive::IDeviceServiceEvents
         {
             m_lastCommandTimestamp = command->timestamp;
             bool processed = true;
+            command->status = "Success";
 
             try
             {
-                HIVELOG_INFO(m_log, "got \"" << command->name << "\" command");
-                if (command->name == "call")
+                const      String &cmd_name   = command->name;
+                const json::Value &cmd_params = command->params;
+
+                HIVELOG_INFO(m_log, "got \"" << cmd_name << "\" command");
+
+                if (false)
+                    ;
+                else if (cmd_name == "AllJoyn/watchAnnounces")
+                {
+                    const json::Value &j_ifaces = cmd_params;
+
+                    std::vector<String> ifaces;
+                    for (size_t i = 0; i < j_ifaces.size(); ++i)
+                        ifaces.push_back(j_ifaces[i].asString());
+                    if (j_ifaces.isString())
+                        ifaces.push_back(j_ifaces.asString());
+
+                    watchAnnounces(ifaces);
+                }
+                else if (cmd_name == "AllJoyn/unwatchAnnounces")
+                {
+                    const json::Value &j_ifaces = cmd_params;
+
+                    std::vector<String> ifaces;
+                    for (size_t i = 0; i < j_ifaces.size(); ++i)
+                        ifaces.push_back(j_ifaces[i].asString());
+                    if (j_ifaces.isString())
+                        ifaces.push_back(j_ifaces.asString());
+
+                    unwatchAnnounces(ifaces);
+                }
+                else if (command->name == "call")
                 {
                     const json::Value &p = command->params;
 
@@ -527,21 +558,93 @@ private: // ajn::SessionListener interface
 private: // ajn::services::AnnounceHandler
 
     /**
+     * @brief Watch for Announce signals.
+     * @param ifaces The list of supported interfaces.
+     *      Empty for all interfaces.
+     */
+    void watchAnnounces(const std::vector<String> &ifaces)
+    {
+        std::vector<const char*> p(ifaces.size());
+        for (size_t i = 0; i < ifaces.size(); ++i)
+            p[i] = ifaces[i].c_str();
+
+        // watch for announces
+        QStatus status = ajn::services::AnnouncementRegistrar::RegisterAnnounceHandler(*m_AJ_bus,
+                                *this, p.empty() ? NULL : &p[0], p.size());
+        AJ_check(status, "failed to register announce handler");
+    }
+
+
+    /**
+     * @brief Unwatch Announce signals.
+     * @param ifaces The list of supported interfaces.
+     *      Empty for all interfaces.
+     */
+    void unwatchAnnounces(const std::vector<String> &ifaces)
+    {
+        std::vector<const char*> p(ifaces.size());
+        for (size_t i = 0; i < ifaces.size(); ++i)
+            p[i] = ifaces[i].c_str();
+
+        // unwatch announces
+        QStatus status = ajn::services::AnnouncementRegistrar::UnRegisterAnnounceHandler(*m_AJ_bus,
+                                *this, p.empty() ? NULL : &p[0], p.size());
+        AJ_check(status, "failed to unregister announce handler");
+    }
+
+
+    /**
      * @brief Announce information.
      */
     struct AnnounceInfo
     {
         String busName;
-        int port;
+        int    port;
 
         typedef std::vector<String> InterfaceList;
         std::map<String, InterfaceList> objects;
 
+
+        /**
+         * @brief Default constructor.
+         */
         AnnounceInfo()
             : port(0)
         {}
+
+
+        /**
+         * @brief Convert to JSON.
+         */
+        json::Value toJson() const
+        {
+            json::Value params;
+            params["bus"] = busName;
+            params["port"] = port;
+
+            typedef std::map<String,InterfaceList>::const_iterator Iterator;
+            for (Iterator i = objects.begin(); i != objects.end(); ++i)
+            {
+                const String &name = i->first;
+                const InterfaceList &ifaces = i->second;
+
+                // copy interfaces
+                json::Value j_ifaces;
+                j_ifaces.resize(ifaces.size());
+                for (size_t k = 0; k < ifaces.size(); ++k)
+                    j_ifaces[k] = ifaces[k];
+
+                params["objects"][name]/*["interfaces"]*/ = j_ifaces;
+            }
+
+            return params;
+        }
     };
 
+
+    /**
+     * @brief Is called without AllJoyn context.
+     */
     virtual void Announce(uint16_t version, uint16_t port, const char* busName,
                           const ObjectDescriptions& objectDescs,
                           const AboutData& aboutData)
@@ -549,34 +652,39 @@ private: // ajn::services::AnnounceHandler
         HIVELOG_INFO(m_log_AJ, "Announce version:" << version << ", port:" << port
                   << ", bus:\"" << busName << "\"");
 
-//        AnnounceInfo info;
-//        info.busName = busName;
-//        info.port = port;
+        AnnounceInfo info;
+        info.busName = busName;
+        info.port    = port;
 
-//        ObjectDescriptions::const_iterator od = objectDescs.begin();
-//        for (; od != objectDescs.end(); ++od)
-//        {
-//            // copy interface names
-//            AnnounceInfo::InterfaceList interfaces;
-//            interfaces.reserve(od->second.size());
-//            for (size_t i = 0; i < od->second.size(); ++i)
-//                interfaces.push_back(od->second[i].c_str());
+        ObjectDescriptions::const_iterator od = objectDescs.begin();
+        for (; od != objectDescs.end(); ++od)
+        {
+            // copy interface names
+            AnnounceInfo::InterfaceList ifaces;
+            ifaces.reserve(od->second.size());
+            for (size_t i = 0; i < od->second.size(); ++i)
+                ifaces.push_back(od->second[i].c_str());
 
-//            String obj_name = od->first.c_str();
-//            info.objects[obj_name] = interfaces;
-//        }
-//        HIVE_UNUSED(aboutData);
+            String objName = od->first.c_str();
+            info.objects[objName] = ifaces;
+        }
+        HIVE_UNUSED(aboutData);
 
-//        // do processing on main thread!
-//        m_ios.post(boost::bind(&This::safeAnnounce, shared_from_this(), info));
+        // do processing on main thread!
+        m_ios.post(boost::bind(&This::safeAnnounce, shared_from_this(), info));
     }
 
+
+    /**
+     * @brief Got Announce signal.
+     */
     void safeAnnounce(const AnnounceInfo &info)
     {
-//        if (m_gw_dev_registered)
-//            sendAnnounceNotification(info);
-//        else
-//            m_pendgingAnnouncements.push_back(info);
+        devicehive::NotificationPtr p = devicehive::Notification::create("AllJoyn/Announce", info.toJson());
+        if (m_service && m_gw_dev && m_gw_dev_registered)
+            m_service->asyncInsertNotification(m_gw_dev, p);
+        else
+            m_pendingNotifications.push_back(p);
     }
 
 private: // AllJoyn bus structure
@@ -1135,13 +1243,6 @@ inline void main(int argc, const char* argv[])
 
 #endif // __DH_ALLJOYN_HPP_
 
-
-/*
-        // watch for announcements
-        status = ajn::services::AnnouncementRegistrar::RegisterAnnounceHandler(*m_AJ_bus, *this,
-                                                                               NULL, 0); // all!
-        AJ_check(status, "failed to register announce handler");
-*/
 
 
 /*
