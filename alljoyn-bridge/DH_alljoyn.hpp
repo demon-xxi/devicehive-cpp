@@ -75,7 +75,6 @@ protected:
         : m_disableWebsockets(false)
         , m_disableWebsocketPingPong(false)
         , m_gw_dev_registered(false)
-        , m_web_timeout(0)
         , m_log_AJ("AllJoyn")
     {}
 
@@ -152,13 +151,9 @@ public:
                                                      devicehive::Device::Class::create("AllJyon gateway", "0.1"),
                                                      pthis->m_network);
         pthis->m_gw_dev->status = "Online";
-        pthis->m_defaultBaseUrl =  baseUrl;
-        pthis->m_web_timeout = web_timeout;
 
         pthis->m_http = http::Client::create(pthis->m_ios);
         pthis->m_http->enableKeepAliveConnections(http_keep_alive);
-
-        pthis->AJ_init();
 
         if (1) // create service
         {
@@ -197,6 +192,7 @@ public:
             }
         }
 
+        pthis->AJ_init();
         return pthis;
     }
 
@@ -220,21 +216,16 @@ private:
         HIVELOG_TRACE(m_log_AJ, "creating BusAttachment");
         m_AJ_bus.reset(new ajn::BusAttachment(BUS_NAME, true));
 
-        HIVELOG_TRACE(m_log_AJ, "register bus listener&start");
+        HIVELOG_TRACE(m_log_AJ, "registering bus listener and starting");
         m_AJ_bus->RegisterBusListener(*this);
         QStatus status = m_AJ_bus->Start();
         AJ_check(status, "failed to start AllJoyn bus");
 
-        // connect
         HIVELOG_TRACE(m_log_AJ, "connecting");
         status = m_AJ_bus->Connect();
         AJ_check(status, "failed to connect AllJoyn bus");
-        HIVELOG_INFO(m_log_AJ, "connected to BUS: " << m_AJ_bus->GetUniqueName().c_str());
-
-        // watch for announcements
-        status = ajn::services::AnnouncementRegistrar::RegisterAnnounceHandler(*m_AJ_bus, *this,
-                                                                               NULL, 0); // all!
-        AJ_check(status, "failed to register announce handler");
+        HIVELOG_INFO(m_log_AJ, "connected to BUS: \""
+            << m_AJ_bus->GetUniqueName().c_str() << "\"");
     }
 
 protected:
@@ -246,6 +237,7 @@ protected:
     {
         Base::start();
 
+        // TODO: connect to alljoyn bus here
         m_service->asyncConnect();
     }
 
@@ -264,6 +256,10 @@ protected:
         HIVELOG_INFO(m_log_AJ, "stopping bus...");
         status = m_AJ_bus->Stop();
         AJ_check(status, "failed to stop bus attachment");
+
+        // release objects
+        m_bus_proxies.clear();
+        m_AJ_bus.reset();
 
         Base::stop();
     }
@@ -311,6 +307,7 @@ private: // devicehive::IDeviceServiceEvents
                 return;
             }
 
+            HIVELOG_INFO_STR(m_log, "got server info, registering...");
             m_service->asyncRegisterDevice(m_gw_dev);
         }
         else
@@ -323,10 +320,11 @@ private: // devicehive::IDeviceServiceEvents
     {
         if (!err)
         {
+            HIVELOG_INFO_STR(m_log, "registered, subscribing for commands...");
             m_service->asyncSubscribeForCommands(m_gw_dev, m_lastCommandTimestamp);
             m_gw_dev_registered = true;
 
-            sendPendingAnnouncements();
+            sendPendingNotifications();
         }
         else
             handleError(err, "registering device");
@@ -343,6 +341,7 @@ private: // devicehive::IDeviceServiceEvents
 
             try
             {
+                HIVELOG_INFO(m_log, "got \"" << command->name << "\" command");
                 if (command->name == "call")
                 {
                     const json::Value &p = command->params;
@@ -444,6 +443,22 @@ private:
         }
     }
 
+private:
+    std::vector<devicehive::NotificationPtr> m_pendingNotifications;
+
+    /**
+     * @brief Send all pending notifications.
+     */
+    void sendPendingNotifications()
+    {
+        if (!m_service)
+            return;
+
+        for (size_t i = 0; i < m_pendingNotifications.size(); ++i)
+            m_service->asyncInsertNotification(m_gw_dev, m_pendingNotifications[i]);
+        m_pendingNotifications.clear();
+    }
+
 private: // ajn::BusListener interface
 
     virtual void FoundAdvertisedName(const char* name, ajn::TransportMask transport, const char* namePrefix)
@@ -534,69 +549,34 @@ private: // ajn::services::AnnounceHandler
         HIVELOG_INFO(m_log_AJ, "Announce version:" << version << ", port:" << port
                   << ", bus:\"" << busName << "\"");
 
-        AnnounceInfo info;
-        info.busName = busName;
-        info.port = port;
+//        AnnounceInfo info;
+//        info.busName = busName;
+//        info.port = port;
 
-        ObjectDescriptions::const_iterator od = objectDescs.begin();
-        for (; od != objectDescs.end(); ++od)
-        {
-            // copy interface names
-            AnnounceInfo::InterfaceList interfaces;
-            interfaces.reserve(od->second.size());
-            for (size_t i = 0; i < od->second.size(); ++i)
-                interfaces.push_back(od->second[i].c_str());
+//        ObjectDescriptions::const_iterator od = objectDescs.begin();
+//        for (; od != objectDescs.end(); ++od)
+//        {
+//            // copy interface names
+//            AnnounceInfo::InterfaceList interfaces;
+//            interfaces.reserve(od->second.size());
+//            for (size_t i = 0; i < od->second.size(); ++i)
+//                interfaces.push_back(od->second[i].c_str());
 
-            String obj_name = od->first.c_str();
-            info.objects[obj_name] = interfaces;
-        }
-        HIVE_UNUSED(aboutData);
+//            String obj_name = od->first.c_str();
+//            info.objects[obj_name] = interfaces;
+//        }
+//        HIVE_UNUSED(aboutData);
 
-        // do processing on main thread!
-        m_ios.post(boost::bind(&This::safeAnnounce, shared_from_this(), info));
+//        // do processing on main thread!
+//        m_ios.post(boost::bind(&This::safeAnnounce, shared_from_this(), info));
     }
 
     void safeAnnounce(const AnnounceInfo &info)
     {
-        if (m_gw_dev_registered)
-            sendAnnounceNotification(info);
-        else
-            m_pendgingAnnouncements.push_back(info);
-    }
-
-private:
-    std::vector<AnnounceInfo> m_pendgingAnnouncements;
-
-    /**
-     * @brief Send all pending announcements.
-     */
-    void sendPendingAnnouncements()
-    {
-        for (size_t i = 0; i < m_pendgingAnnouncements.size(); ++i)
-            sendAnnounceNotification(m_pendgingAnnouncements[i]);
-        m_pendgingAnnouncements.clear();
-    }
-
-    /**
-     * @brief send Announce notification.
-     */
-    void sendAnnounceNotification(const AnnounceInfo &info)
-    {
-        json::Value params;
-        params["bus"] = info.busName;
-        params["port"] = info.port;
-
-        AJ_BusProxyPtr pBusProxy = getBusProxy(info.busName, info.port);
-
-        typedef std::map<String,AnnounceInfo::InterfaceList>::const_iterator Iterator;
-        for (Iterator i = info.objects.begin(); i != info.objects.end(); ++i)
-        {
-            const String name = i->first;
-            AJ_ObjProxyPtr pObjProxy = getObjProxy(pBusProxy, name);
-            params["objects"][name]["interfaces"] = pObjProxy->getInterfaces();
-        }
-
-        m_service->asyncInsertNotification(m_gw_dev, devicehive::Notification::create("Announce", params));
+//        if (m_gw_dev_registered)
+//            sendAnnounceNotification(info);
+//        else
+//            m_pendgingAnnouncements.push_back(info);
     }
 
 private: // AllJoyn bus structure
@@ -607,6 +587,12 @@ private: // AllJoyn bus structure
     typedef boost::shared_ptr<AJ_BusProxy> AJ_BusProxyPtr;
     typedef boost::shared_ptr<AJ_ObjProxy> AJ_ObjProxyPtr;
 
+
+    /**
+     * @brief The remote bus.
+     *
+     * Represents remote bus.
+     */
     class AJ_BusProxy
     {
     private:
@@ -619,6 +605,7 @@ private: // AllJoyn bus structure
             ajn::SessionOpts opts(ajn::SessionOpts::TRAFFIC_MESSAGES, false/*multipoint*/,
                                   ajn::SessionOpts::PROXIMITY_ANY, ajn::TRANSPORT_ANY);
 
+            // TODO: do it in asynchronous way
             QStatus status = m_bus->JoinSession(m_name.c_str(), m_port, listener, m_sessionId, opts);
             AJ_check(status, "cannot join session");
         }
@@ -626,12 +613,15 @@ private: // AllJoyn bus structure
     public:
         ~AJ_BusProxy()
         {
-            m_bus->LeaveSession(m_sessionId);
+            m_bus->LeaveSession(m_sessionId); // ignore status
         }
 
     public:
         typedef boost::shared_ptr<AJ_BusProxy> SharedPtr;
 
+        /**
+         * @brief Create new remote bus.
+         */
         static SharedPtr create(boost::shared_ptr<ajn::BusAttachment> bus, const String &name, int port, ajn::SessionListener *listener)
         {
             return SharedPtr(new AJ_BusProxy(bus, name, port, listener));
@@ -650,6 +640,9 @@ private: // AllJoyn bus structure
     };
 
 
+    /**
+     * @brief The remote object.
+     */
     class AJ_ObjProxy
     {
     private:
@@ -672,6 +665,9 @@ private: // AllJoyn bus structure
     public:
         typedef boost::shared_ptr<AJ_ObjProxy> SharedPtr;
 
+        /**
+         * @brief Create new remote object.
+         */
         static SharedPtr create(AJ_BusProxyPtr pBusProxy, const String &name)
         {
             return SharedPtr(new AJ_ObjProxy(pBusProxy, name));
@@ -758,7 +754,7 @@ private: // AllJoyn bus structure
             if (!func)
                 throw std::runtime_error("no method found");
 
-            ArgInfo meta(func->signature.c_str(),
+            MsgArgInfo meta(func->signature.c_str(),
                          func->returnSignature.c_str(),
                          func->argNames.c_str());
 
@@ -796,7 +792,7 @@ private: // AllJoyn bus structure
             if ((prop->access&ajn::PROP_ACCESS_READ) == 0)
                 throw std::runtime_error("property is not readable");
 
-            ArgInfo meta("", prop->signature.c_str(), propertyName);
+            MsgArgInfo meta("", prop->signature.c_str(), propertyName);
 
             std::cerr << "GET-PROP: " << ifaceName << "." << propertyName
                          << " with \"" << meta.retSign << "\n";
@@ -824,7 +820,7 @@ private: // AllJoyn bus structure
             if ((prop->access&ajn::PROP_ACCESS_WRITE) == 0)
                 throw std::runtime_error("property is not writable");
 
-            ArgInfo meta(prop->signature.c_str(), "", propertyName);
+            MsgArgInfo meta(prop->signature.c_str(), "", propertyName);
 
             std::cerr << "SET-PROP: " << ifaceName << "." << propertyName
                          << " with \"" << meta.argSign << "\"\n";
@@ -840,14 +836,14 @@ private: // AllJoyn bus structure
 
     public:
 
-        struct ArgInfo
+        struct MsgArgInfo
         {
             String argSign;
             String retSign;
 
             std::vector<String> names;
 
-            ArgInfo(const String &arg_s,
+            MsgArgInfo(const String &arg_s,
                     const String &ret_s,
                     const String &names)
                 : argSign(arg_s)
@@ -874,7 +870,7 @@ private: // AllJoyn bus structure
          *
          * Uses argSign.
          */
-        std::vector<ajn::MsgArg> AJ_fromJson(const json::Value &val, const ArgInfo &meta)
+        static std::vector<ajn::MsgArg> AJ_fromJson(const json::Value &val, const MsgArgInfo &meta)
         {
             std::vector<ajn::MsgArg> res;
 
@@ -928,7 +924,7 @@ private: // AllJoyn bus structure
          *
          * Uses retSign.
          */
-        json::Value AJ_toJson(const std::vector<ajn::MsgArg> &args, const ArgInfo &meta, size_t arg_offset = 0)
+        static json::Value AJ_toJson(const std::vector<ajn::MsgArg> &args, const MsgArgInfo &meta, size_t arg_offset = 0)
         {
             json::Value res;
 
@@ -1033,9 +1029,12 @@ private: // AllJoyn bus structure
         AJ_BusProxyPtr m_pBusProxy;
     };
 
-private:
+private: // remote bus list
     std::vector<AJ_BusProxyPtr> m_bus_proxies;
 
+    /**
+     * @brief Get remote bus by name and port.
+     */
     AJ_BusProxyPtr getBusProxy(const String &busName, int port)
     {
         const size_t n = m_bus_proxies.size();
@@ -1053,6 +1052,10 @@ private:
         return p;
     }
 
+
+    /**
+     * @brief Get remote object by name (object path).
+     */
     AJ_ObjProxyPtr getObjProxy(AJ_BusProxyPtr pBusProxy, const String &objName)
     {
         const size_t n = pBusProxy->m_obj_proxies.size();
@@ -1079,8 +1082,6 @@ private:
     devicehive::DevicePtr m_gw_dev;  // gateway device
     bool m_gw_dev_registered;
     String m_lastCommandTimestamp; ///< @brief The timestamp of the last received command.
-    String m_defaultBaseUrl;
-    int m_web_timeout;
 
 private:
     boost::shared_ptr<ajn::BusAttachment> m_AJ_bus;
@@ -1133,3 +1134,33 @@ inline void main(int argc, const char* argv[])
 
 
 #endif // __DH_ALLJOYN_HPP_
+
+
+/*
+        // watch for announcements
+        status = ajn::services::AnnouncementRegistrar::RegisterAnnounceHandler(*m_AJ_bus, *this,
+                                                                               NULL, 0); // all!
+        AJ_check(status, "failed to register announce handler");
+*/
+
+
+/*
+    void sendAnnounceNotification(const AnnounceInfo &info)
+    {
+        json::Value params;
+        params["bus"] = info.busName;
+        params["port"] = info.port;
+
+        AJ_BusProxyPtr pBusProxy = getBusProxy(info.busName, info.port);
+
+        typedef std::map<String,AnnounceInfo::InterfaceList>::const_iterator Iterator;
+        for (Iterator i = info.objects.begin(); i != info.objects.end(); ++i)
+        {
+            const String name = i->first;
+            AJ_ObjProxyPtr pObjProxy = getObjProxy(pBusProxy, name);
+            params["objects"][name]["interfaces"] = pObjProxy->getInterfaces();
+        }
+
+        m_service->asyncInsertNotification(m_gw_dev, devicehive::Notification::create("Announce", params));
+    }
+*/
