@@ -129,7 +129,7 @@ public:
         // TODO: cancel only related requests
         m_http->cancelAll();
 
-        close();
+        close(true); // force to close
     }
 
 public:
