@@ -23,6 +23,7 @@
 
 // constants
 static const char* BUS_NAME = "DeviceHiveToAllJoynGatewayConnector";
+static const uint32_t PING_TIMEOUT = 20;
 static const uint32_t LINK_TIMEOUT = 20;
 
 namespace DH_alljoyn
@@ -63,6 +64,7 @@ class Application:
         public ajn::BusListener,
         public ajn::SessionListener,
         public ajn::services::AnnounceHandler,
+        public ajn::BusAttachment::PingAsyncCB,
         public devicehive::IDeviceServiceEvents
 {
     typedef basic_app::Application Base; ///< @brief The base type.
@@ -377,6 +379,12 @@ private: // devicehive::IDeviceServiceEvents
                 {
                     const json::Value &j_prefix = cmd_params;
                     findAdvertisedName(j_prefix.asString());
+                }
+                else if (cmd_name == "AllJoyn/Ping")
+                {
+                    const json::Value &j_name = cmd_params;
+                    ping(j_name.asString(), command);
+                    processed = false; // will be updated in PingCB()
                 }
                 else if (command->name == "call")
                 {
@@ -735,6 +743,51 @@ private: // ajn::services::AnnounceHandler
             m_service->asyncInsertNotification(m_gw_dev, p);
         else
             m_pendingNotifications.push_back(p);
+    }
+
+private: // Ping
+
+    // ping context
+    struct PingContext
+    {
+        String name;
+        devicehive::CommandPtr command;
+
+        PingContext(const String &n, devicehive::CommandPtr c)
+            : name(n)
+            , command(c)
+        {}
+    };
+
+
+    /**
+     * @brief Send ping request.
+     */
+    void ping(const String &name, devicehive::CommandPtr command)
+    {
+        std::auto_ptr<PingContext> context(new PingContext(name, command));
+        QStatus status = m_AJ_bus->PingAsync(name.c_str(), PING_TIMEOUT, this, context.get());
+        AJ_check(status, "failed to initiate Ping request");
+        context.release(); // will be deleted in PingCB
+    }
+
+    virtual void PingCB(QStatus status, void* context_)
+    {
+        std::auto_ptr<PingContext> context(reinterpret_cast<PingContext*>(context_));
+
+        // do processing on main thread
+        m_ios.post(boost::bind(&This::safePingCB, shared_from_this(),
+                                status, context->name, context->command));
+    }
+
+    void safePingCB(QStatus status, const String &name, devicehive::CommandPtr command)
+    {
+        command->status = (status == ER_OK) ? "Success" : "Failed";
+        command->result = String(QCC_StatusText(status));
+        HIVE_UNUSED(name);
+
+        if (m_service && m_gw_dev && m_gw_dev_registered)
+            m_service->asyncUpdateCommand(m_gw_dev, command);
     }
 
 private: // AllJoyn bus structure
