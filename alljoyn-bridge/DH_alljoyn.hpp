@@ -349,7 +349,7 @@ private: // devicehive::IDeviceServiceEvents
 
                 if (false)
                     ;
-                else if (cmd_name == "AllJoyn/watchAnnounces")
+                else if (cmd_name == "AllJoyn/WatchAnnounces")
                 {
                     const json::Value &j_ifaces = cmd_params;
 
@@ -361,7 +361,7 @@ private: // devicehive::IDeviceServiceEvents
 
                     watchAnnounces(ifaces);
                 }
-                else if (cmd_name == "AllJoyn/unwatchAnnounces")
+                else if (cmd_name == "AllJoyn/UnwatchAnnounces")
                 {
                     const json::Value &j_ifaces = cmd_params;
 
@@ -372,6 +372,11 @@ private: // devicehive::IDeviceServiceEvents
                         ifaces.push_back(j_ifaces.asString());
 
                     unwatchAnnounces(ifaces);
+                }
+                else if (cmd_name == "AllJoyn/FindAdvertisedName")
+                {
+                    const json::Value &j_prefix = cmd_params;
+                    findAdvertisedName(j_prefix.asString());
                 }
                 else if (command->name == "call")
                 {
@@ -492,10 +497,36 @@ private:
 
 private: // ajn::BusListener interface
 
+    void findAdvertisedName(const String &namePrefix)
+    {
+        QStatus status = m_AJ_bus->FindAdvertisedName(namePrefix.c_str());
+        AJ_check(status, "failed to find advertised name");
+    }
+
+
     virtual void FoundAdvertisedName(const char* name, ajn::TransportMask transport, const char* namePrefix)
     {
         HIVELOG_INFO(m_log_AJ, "found advertised name:\"" << name << "\", prefix:\"" << namePrefix << "\"");
         HIVE_UNUSED(transport);
+
+        // do processing on main thread
+        m_ios.post(boost::bind(&This::safeFoundAdvertisedName, shared_from_this(),
+                               String(name), String(namePrefix)));
+    }
+
+    /**
+     * @brief Send FoundAdvertisedName notification.
+     */
+    void safeFoundAdvertisedName(const String &name, const String &namePrefix)
+    {
+        json::Value params;
+        params["name"] = name;
+        params["prefix"] = namePrefix;
+        devicehive::NotificationPtr p = devicehive::Notification::create("AllJoyn/FoundAdvertisedName", params);
+        if (m_service && m_gw_dev && m_gw_dev_registered)
+            m_service->asyncInsertNotification(m_gw_dev, p);
+        else
+            m_pendingNotifications.push_back(p);
     }
 
 
@@ -503,6 +534,25 @@ private: // ajn::BusListener interface
     {
         HIVELOG_INFO(m_log_AJ, "advertised name is lost:\"" << name << "\", prefix:\"" << namePrefix << "\"");
         HIVE_UNUSED(transport);
+
+        // do processing on main thread
+        m_ios.post(boost::bind(&This::safeLostAdvertisedName, shared_from_this(),
+                               String(name), String(namePrefix)));
+    }
+
+    /**
+     * @brief Send LostAdvertisedName notification.
+     */
+    void safeLostAdvertisedName(const String &name, const String &namePrefix)
+    {
+        json::Value params;
+        params["name"] = name;
+        params["prefix"] = namePrefix;
+        devicehive::NotificationPtr p = devicehive::Notification::create("AllJoyn/LostAdvertisedName", params);
+        if (m_service && m_gw_dev && m_gw_dev_registered)
+            m_service->asyncInsertNotification(m_gw_dev, p);
+        else
+            m_pendingNotifications.push_back(p);
     }
 
 
