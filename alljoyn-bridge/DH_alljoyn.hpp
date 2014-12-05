@@ -386,64 +386,114 @@ private: // devicehive::IDeviceServiceEvents
                     ping(j_name.asString(), command);
                     processed = false; // will be updated in PingCB()
                 }
-                else if (command->name == "call")
+                else if (cmd_name == "AllJoyn/GetObjectInfo")
                 {
-                    const json::Value &p = command->params;
+                    const json::Value &j_addr = cmd_params;
 
-                    String bus = p["bus"].asString();
-                    int port = p["port"].asInt();
-                    String obj = p["object"].asString();
-                    String iface = p["iface"].asString();
-                    String method = p["method"].asString();
+                    AJ_BusProxyPtr pBus = getBusProxy(j_addr["bus"].asString(),
+                                                      j_addr["port"].asInt());
+                    if (!pBus) throw std::runtime_error("not bus found");
 
-                    json::Value arg = p["arg"];
-                    json::Value res;
+                    AJ_ObjProxyPtr pObj = getObjProxy(pBus, j_addr["object"].asString());
+                    if (!pObj) throw std::runtime_error("no object found");
 
-                    AJ_BusProxyPtr pBusProxy = getBusProxy(bus, port);
-                    AJ_ObjProxyPtr pObjProxy = getObjProxy(pBusProxy, obj);
-
-                    String status = pObjProxy->callMethod(iface, method, arg, &res);
-
-                    command->status = status;
-                    command->result = res;
+                    command->result = pObj->getObjectInfo();
                 }
-                else if (command->name == "get-prop")
+                else if (cmd_name == "AllJoyn/GetInterfaceInfo")
                 {
-                    const json::Value &p = command->params;
+                    const json::Value &j_addr = cmd_params;
 
-                    String bus = p["bus"].asString();
-                    int port = p["port"].asInt();
-                    String obj = p["object"].asString();
-                    String iface = p["iface"].asString();
-                    String property = p["property"].asString();
+                    AJ_BusProxyPtr pBus = getBusProxy(j_addr["bus"].asString(),
+                                                      j_addr["port"].asInt());
+                    if (!pBus) throw std::runtime_error("not bus found");
 
-                    json::Value res;
+                    AJ_ObjProxyPtr pObj = getObjProxy(pBus, j_addr["object"].asString());
+                    if (!pObj) throw std::runtime_error("no object found");
 
-                    AJ_BusProxyPtr pBusProxy = getBusProxy(bus, port);
-                    AJ_ObjProxyPtr pObjProxy = getObjProxy(pBusProxy, obj);
-
-                    String status = pObjProxy->getProperty(iface, property, &res);
-                    command->status = status;
-                    command->result = res;
+                    command->result = pObj->getInterfaceInfo(cmd_params["interface"].asString());
                 }
-                else if (command->name == "set-prop")
+                else if (cmd_name == "AllJoyn/CallMethod")
                 {
-                    const json::Value &p = command->params;
+                    const json::Value &j_addr = cmd_params;
 
-                    String bus = p["bus"].asString();
-                    int port = p["port"].asInt();
-                    String obj = p["object"].asString();
-                    String iface = p["iface"].asString();
-                    String property = p["property"].asString();
+                    AJ_BusProxyPtr pBus = getBusProxy(j_addr["bus"].asString(),
+                                                      j_addr["port"].asInt());
+                    if (!pBus) throw std::runtime_error("not bus found");
 
-                    json::Value arg = p["arg"];
+                    AJ_ObjProxyPtr pObj = getObjProxy(pBus, j_addr["object"].asString());
+                    if (!pObj) throw std::runtime_error("no object found");
 
-                    AJ_BusProxyPtr pBusProxy = getBusProxy(bus, port);
-                    AJ_ObjProxyPtr pObjProxy = getObjProxy(pBusProxy, obj);
+                    String iface = cmd_params["interface"].asString();
+                    String method = cmd_params["method"].asString();
 
-                    String status = pObjProxy->setProperty(iface, property, arg);
-                    command->status = status;
+                    json::Value args = cmd_params["arguments"];
+
+                    command->status = pObj->callMethod(iface, method,
+                                              args, &command->result);
+                }
+                else if (cmd_name == "AllJoyn/GetProperty")
+                {
+                    const json::Value &j_addr = cmd_params;
+
+                    AJ_BusProxyPtr pBus = getBusProxy(j_addr["bus"].asString(),
+                                                      j_addr["port"].asInt());
+                    if (!pBus) throw std::runtime_error("not bus found");
+
+                    AJ_ObjProxyPtr pObj = getObjProxy(pBus, j_addr["object"].asString());
+                    if (!pObj) throw std::runtime_error("no object found");
+
+                    String iface = cmd_params["interface"].asString();
+                    String property = cmd_params["property"].asString();
+
+                    command->status = pObj->getProperty(iface, property, &command->result);
+                }
+                else if (cmd_name == "AllJoyn/SetProperty")
+                {
+                    const json::Value &j_addr = cmd_params;
+
+                    AJ_BusProxyPtr pBus = getBusProxy(j_addr["bus"].asString(),
+                                                      j_addr["port"].asInt());
+                    if (!pBus) throw std::runtime_error("not bus found");
+
+                    AJ_ObjProxyPtr pObj = getObjProxy(pBus, j_addr["object"].asString());
+                    if (!pObj) throw std::runtime_error("no object found");
+
+                    String iface = cmd_params["interface"].asString();
+                    String property = cmd_params["property"].asString();
+                    json::Value val = cmd_params["value"];
+
+                    command->status = pObj->setProperty(iface, property, val);
                     command->result = json::Value::null();
+                }
+                else if (cmd_name == "AllJoyn/WatchSignal")
+                {
+                    String obj = cmd_params["object"].asString();
+                    String iface = cmd_params["interface"].asString();
+                    String signal = cmd_params["signal"].asString();
+
+                    const ajn::InterfaceDescription *i = m_AJ_bus->GetInterface(iface.c_str());
+                    if (!i) throw std::runtime_error("no interface found");
+
+                    const ajn::InterfaceDescription::Member *s = i->GetSignal(signal.c_str());
+                    if (!s) throw std::runtime_error("no signal found");
+
+                    QStatus status = m_AJ_bus->RegisterSignalHandler(this, (MessageReceiver::SignalHandler)&This::onSignalHandler, s, obj.empty() ? NULL : obj.c_str());
+                    AJ_check(status, "failed to register signal handler");
+                }
+                else if (cmd_name == "AllJoyn/UnwatchSignal")
+                {
+                    String obj = cmd_params["object"].asString();
+                    String iface = cmd_params["interface"].asString();
+                    String signal = cmd_params["signal"].asString();
+
+                    const ajn::InterfaceDescription *i = m_AJ_bus->GetInterface(iface.c_str());
+                    if (!i) throw std::runtime_error("no interface found");
+
+                    const ajn::InterfaceDescription::Member *s = i->GetSignal(signal.c_str());
+                    if (!s) throw std::runtime_error("no signal found");
+
+                    QStatus status = m_AJ_bus->UnregisterSignalHandler(this, (MessageReceiver::SignalHandler)&This::onSignalHandler, s, obj.empty() ? NULL : obj.c_str());
+                    AJ_check(status, "failed to unregister signal handler");
                 }
                 else
                     throw std::runtime_error("unknown command");
@@ -790,6 +840,35 @@ private: // Ping
             m_service->asyncUpdateCommand(m_gw_dev, command);
     }
 
+private: // signal handlers
+    void onSignalHandler(const ajn::InterfaceDescription::Member *member, const char *srcPath, ajn::Message &message)
+    {
+        MsgArgInfo meta("", member->signature.c_str(), member->argNames.c_str());
+
+        const ajn::MsgArg *p_args = 0;
+        size_t n_args = 0;
+        message->GetArgs(n_args, p_args);
+        std::vector<ajn::MsgArg> aj_args(p_args, p_args+n_args);
+        json::Value args = AJ_toJson(aj_args, meta);
+
+        // do processing on main thread
+        m_ios.post(boost::bind(&This::safeSignalHandler, shared_from_this(),
+                        String(member->name.c_str()), String(srcPath), args));
+    }
+
+    void safeSignalHandler(const String &signalName, const String &objectPath, const json::Value &args)
+    {
+        json::Value params;
+        params["object"] = objectPath;
+        params["arguments"] = args;
+
+        devicehive::NotificationPtr p = devicehive::Notification::create("AllJoyn/Signal/" + signalName, params);
+        if (m_service && m_gw_dev && m_gw_dev_registered)
+            m_service->asyncInsertNotification(m_gw_dev, p);
+        else
+            m_pendingNotifications.push_back(p);
+    }
+
 private: // AllJoyn bus structure
 
     class AJ_BusProxy;
@@ -886,32 +965,46 @@ private: // AllJoyn bus structure
 
     public:
 
-        json::Value getInterfaces() const
+        /**
+         * @brief Get object information.
+         *
+         *  List of interfaces.
+         */
+        json::Value getObjectInfo() const
         {
             const int N = 1024;
-            json::Value res;
+            json::Value iface_list;
 
             const ajn::InterfaceDescription* ifaces[N];
             int n = m_proxy.GetInterfaces(ifaces, N);
+            iface_list.resize(n);
             for (int i = 0; i < n; ++i)
             {
                 const ajn::InterfaceDescription *iface = ifaces[i];
                 const String name = iface->GetName();
-                res[name] = getInterface(name);
+                iface_list[i] = name;
             }
 
-            return res;
+            json::Value info;
+            info["interfaces"] = iface_list;
+            return info;
         }
 
-        json::Value getInterface(const String &name) const
+
+        /**
+         * @brief Get interface information.
+         *
+         * List of members/signals/properties.
+         */
+        json::Value getInterfaceInfo(const String &name) const
         {
             const int N = 1024;
             json::Value res;
 
             const ajn::InterfaceDescription *iface = m_proxy.GetInterface(name.c_str());
-            if (!iface)
-                return res;
+            if (!iface) throw std::runtime_error("no interface found");
 
+            // methods and signals
             const ajn::InterfaceDescription::Member* members[N];
             int n = iface->GetMembers(members, N);
             for (int i = 0; i < n; ++i)
@@ -922,7 +1015,7 @@ private: // AllJoyn bus structure
                 json::Value info;
                 info["signature"] = String(mb->signature.c_str());
                 info["returnSignature"] = String(mb->returnSignature.c_str());
-                info["argNames"] = String(mb->argNames.c_str());
+                info["argumentNames"] = String(mb->argNames.c_str());
 
                 if (mb->memberType == ajn::MESSAGE_METHOD_CALL)
                     res["methods"][name] = info;
@@ -930,6 +1023,7 @@ private: // AllJoyn bus structure
                     res["signals"][name] = info;
             }
 
+            // properties
             const ajn::InterfaceDescription::Property* properties[N];
             int m = iface->GetProperties(properties, N);
             for (int i = 0; i < m; ++i)
@@ -954,16 +1048,17 @@ private: // AllJoyn bus structure
 
     public:
 
+        /**
+         * @brief Call method on remote object.
+         */
         String callMethod(const String &ifaceName, const String &methodName,
                           const json::Value &arg, json::Value *res)
         {
             const ajn::InterfaceDescription *iface = m_proxy.GetInterface(ifaceName.c_str());
-            if (!iface)
-                throw std::runtime_error("no interface found");
+            if (!iface) throw std::runtime_error("no interface found");
 
             const ajn::InterfaceDescription::Member *func = iface->GetMember(methodName.c_str());
-            if (!func)
-                throw std::runtime_error("no method found");
+            if (!func) throw std::runtime_error("no method found");
 
             MsgArgInfo meta(func->signature.c_str(),
                          func->returnSignature.c_str(),
@@ -977,7 +1072,7 @@ private: // AllJoyn bus structure
 
             // TODO: do it in async way
             QStatus status = m_proxy.MethodCall(ifaceName.c_str(), methodName.c_str(),
-                                                &args[0], args.size(), reply);
+                                                 &args[0], args.size(), reply);
             if (ER_OK == status)
             {
                 const ajn::MsgArg* raw_args = 0;
@@ -991,15 +1086,17 @@ private: // AllJoyn bus structure
             return String(QCC_StatusText(status));
         }
 
-        String getProperty(const String &ifaceName, const String &propertyName, json::Value *res)
+
+        /**
+         * @brief Get property value.
+         */
+        String getProperty(const String &ifaceName, const String &propertyName, json::Value *val)
         {
             const ajn::InterfaceDescription *iface = m_proxy.GetInterface(ifaceName.c_str());
-            if (!iface)
-                throw std::runtime_error("no interface found");
+            if (!iface) throw std::runtime_error("no interface found");
 
             const ajn::InterfaceDescription::Property *prop = iface->GetProperty(propertyName.c_str());
-            if (!prop)
-                throw std::runtime_error("no property found");
+            if (!prop) throw std::runtime_error("no property found");
             if ((prop->access&ajn::PROP_ACCESS_READ) == 0)
                 throw std::runtime_error("property is not readable");
 
@@ -1013,21 +1110,23 @@ private: // AllJoyn bus structure
             QStatus status = m_proxy.GetProperty(ifaceName.c_str(), propertyName.c_str(), ret_args[0]);
             if (ER_OK == status)
             {
-                *res = AJ_toJson(ret_args, meta, 0);
+                *val = AJ_toJson(ret_args, meta, 0);
             }
 
             return String(QCC_StatusText(status));
         }
 
-        String setProperty(const String &ifaceName, const String &propertyName, const json::Value &arg)
+
+        /**
+         * @brief Set property value.
+         */
+        String setProperty(const String &ifaceName, const String &propertyName, const json::Value &val)
         {
             const ajn::InterfaceDescription *iface = m_proxy.GetInterface(ifaceName.c_str());
-            if (!iface)
-                throw std::runtime_error("no interface found");
+            if (!iface) throw std::runtime_error("no interface found");
 
             const ajn::InterfaceDescription::Property *prop = iface->GetProperty(propertyName.c_str());
-            if (!prop)
-                throw std::runtime_error("no property found");
+            if (!prop) throw std::runtime_error("no property found");
             if ((prop->access&ajn::PROP_ACCESS_WRITE) == 0)
                 throw std::runtime_error("property is not writable");
 
@@ -1035,7 +1134,7 @@ private: // AllJoyn bus structure
 
             std::cerr << "SET-PROP: " << ifaceName << "." << propertyName
                          << " with \"" << meta.argSign << "\"\n";
-            std::vector<ajn::MsgArg> args = AJ_fromJson(arg, meta);
+            std::vector<ajn::MsgArg> args = AJ_fromJson(val, meta);
 
             if (args.size() != 1)
                 throw std::runtime_error("no value parsed");
@@ -1046,199 +1145,199 @@ private: // AllJoyn bus structure
         }
 
     public:
-
-        struct MsgArgInfo
-        {
-            String argSign;
-            String retSign;
-
-            std::vector<String> names;
-
-            MsgArgInfo(const String &arg_s,
-                    const String &ret_s,
-                    const String &names)
-                : argSign(arg_s)
-                , retSign(ret_s)
-            {
-                boost::split(this->names, names,
-                             boost::is_any_of(","));
-            }
-
-            String getArgName(size_t i) const
-            {
-                if (i < names.size())
-                    return names[i];
-
-                hive::OStringStream oss;
-                oss << "#" << i;
-                return oss.str();
-            }
-        };
-
-        /**
-         * @brief Convert JSON to AllJoyn message.
-         * @return List of MsgArg.
-         *
-         * Uses argSign.
-         */
-        static std::vector<ajn::MsgArg> AJ_fromJson(const json::Value &val, const MsgArgInfo &meta)
-        {
-            std::vector<ajn::MsgArg> res;
-
-            const String &sign = meta.argSign;
-            for (int i = 0; i < sign.size(); ++i)
-            {
-                String name = meta.getArgName(i);
-                const char s = sign[i];
-                ajn::MsgArg arg;
-
-                switch (s)
-                {
-                    case 'b': arg.Set("b", val[name].asBool()); break;
-                    case 'y': arg.Set("y", val[name].asUInt8()); break;
-                    case 'q': arg.Set("q", val[name].asUInt16()); break;
-                    case 'n': arg.Set("n", val[name].asInt16()); break;
-                    case 'u': arg.Set("u", val[name].asUInt32()); break;
-                    case 'i': arg.Set("i", val[name].asInt32()); break;
-                    case 't': arg.Set("t", val[name].asUInt64()); break;
-                    case 'x': arg.Set("x", val[name].asInt64()); break;
-                    case 'd': arg.Set("d", val[name].asDouble()); break;
-                    case 's':
-                    {
-                        String str = val[name].asString();
-                        arg.Set("s", str.c_str());
-                        arg.Stabilize();
-                    } break;
-
-                    case 'a': case 'e':
-                    case 'r': case 'v':
-                    case '(': case ')':
-                    case '{': case '}':
-                    default:
-                    {
-                        hive::OStringStream oss;
-                        oss << "\"" << s << "\" is unsupported signature";
-                        throw std::runtime_error(oss.str());
-                    } break;
-                }
-
-                res.push_back(arg);
-            }
-
-            return res;
-        }
-
-
-        /**
-         * @brief Convert AllJoyn messages to JSON.
-         * @return The JSON value.
-         *
-         * Uses retSign.
-         */
-        static json::Value AJ_toJson(const std::vector<ajn::MsgArg> &args, const MsgArgInfo &meta, size_t arg_offset = 0)
-        {
-            json::Value res;
-
-            const String &sign = meta.retSign;
-            for (int i = 0; i < sign.size(); ++i)
-            {
-                String name = meta.getArgName(i+arg_offset);
-                ajn::MsgArg arg = (i < args.size()) ? args[i] : ajn::MsgArg();
-                const char s = sign[i];
-
-                switch (s)
-                {
-                    case 'b':
-                    {
-                        bool r = false;
-                        arg.Get("b", &r);
-                        res[name] = r;
-                    } break;
-
-                    case 'y':
-                    {
-                        uint8_t r = 0;
-                        arg.Get("y", &r);
-                        res[name] = r;
-                    } break;
-
-                    case 'q':
-                    {
-                        uint16_t r = 0;
-                        arg.Get("q", &r);
-                        res[name] = r;
-                    } break;
-
-                    case 'n':
-                    {
-                        int16_t r = 0;
-                        arg.Get("n", &r);
-                        res[name] = r;
-                    } break;
-
-                    case 'u':
-                    {
-                        uint32_t r = 0;
-                        arg.Get("u", &r);
-                        res[name] = r;
-                    } break;
-
-                    case 'i':
-                    {
-                        int32_t r = 0;
-                        arg.Get("i", &r);
-                        res[name] = r;
-                    } break;
-
-                    case 't':
-                    {
-                        uint64_t r = 0;
-                        arg.Get("t", &r);
-                        res[name] = r;
-                    } break;
-
-                    case 'x':
-                    {
-                        int64_t r = 0;
-                        arg.Get("x", &r);
-                        res[name] = r;
-                    } break;
-
-                    case 'd':
-                    {
-                        double r = 0.0;
-                        arg.Get("d", &r);
-                        res[name] = r;
-                    } break;
-
-                    case 's':
-                    {
-                        char *str = 0;
-                        arg.Get("s", &str);
-                        res[name] = String(str);
-                    } break;
-
-                    case 'a': case 'e':
-                    case 'r': case 'v':
-                    case '(': case ')':
-                    case '{': case '}':
-                    default:
-                    {
-                        hive::OStringStream oss;
-                        oss << "\"" << s << "\" is unsupported signature";
-                        throw std::runtime_error(oss.str());
-                    } break;
-                }
-            }
-
-            return res;
-        }
-
-    public:
         String m_name; // object name
         ajn::ProxyBusObject m_proxy;
         AJ_BusProxyPtr m_pBusProxy;
     };
+
+private:
+
+    struct MsgArgInfo
+    {
+        String argSign;
+        String retSign;
+
+        std::vector<String> names;
+
+        MsgArgInfo(const String &arg_s,
+                const String &ret_s,
+                const String &names)
+            : argSign(arg_s)
+            , retSign(ret_s)
+        {
+            boost::split(this->names, names,
+                         boost::is_any_of(","));
+        }
+
+        String getArgName(size_t i) const
+        {
+            if (i < names.size())
+                return names[i];
+
+            hive::OStringStream oss;
+            oss << "#" << i;
+            return oss.str();
+        }
+    };
+
+    /**
+     * @brief Convert JSON to AllJoyn message.
+     * @return List of MsgArg.
+     *
+     * Uses argSign.
+     */
+    static std::vector<ajn::MsgArg> AJ_fromJson(const json::Value &val, const MsgArgInfo &meta)
+    {
+        std::vector<ajn::MsgArg> res;
+
+        const String &sign = meta.argSign;
+        for (int i = 0; i < sign.size(); ++i)
+        {
+            String name = meta.getArgName(i);
+            const char s = sign[i];
+            ajn::MsgArg arg;
+
+            switch (s)
+            {
+                case 'b': arg.Set("b", val[name].asBool()); break;
+                case 'y': arg.Set("y", val[name].asUInt8()); break;
+                case 'q': arg.Set("q", val[name].asUInt16()); break;
+                case 'n': arg.Set("n", val[name].asInt16()); break;
+                case 'u': arg.Set("u", val[name].asUInt32()); break;
+                case 'i': arg.Set("i", val[name].asInt32()); break;
+                case 't': arg.Set("t", val[name].asUInt64()); break;
+                case 'x': arg.Set("x", val[name].asInt64()); break;
+                case 'd': arg.Set("d", val[name].asDouble()); break;
+                case 's':
+                {
+                    String str = val[name].asString();
+                    arg.Set("s", str.c_str());
+                    arg.Stabilize();
+                } break;
+
+                case 'a': case 'e':
+                case 'r': case 'v':
+                case '(': case ')':
+                case '{': case '}':
+                default:
+                {
+                    hive::OStringStream oss;
+                    oss << "\"" << s << "\" is unsupported signature";
+                    throw std::runtime_error(oss.str());
+                } break;
+            }
+
+            res.push_back(arg);
+        }
+
+        return res;
+    }
+
+
+    /**
+     * @brief Convert AllJoyn messages to JSON.
+     * @return The JSON value.
+     *
+     * Uses retSign.
+     */
+    static json::Value AJ_toJson(const std::vector<ajn::MsgArg> &args, const MsgArgInfo &meta, size_t arg_offset = 0)
+    {
+        json::Value res;
+
+        const String &sign = meta.retSign;
+        for (int i = 0; i < sign.size(); ++i)
+        {
+            String name = meta.getArgName(i+arg_offset);
+            ajn::MsgArg arg = (i < args.size()) ? args[i] : ajn::MsgArg();
+            const char s = sign[i];
+
+            switch (s)
+            {
+                case 'b':
+                {
+                    bool r = false;
+                    arg.Get("b", &r);
+                    res[name] = r;
+                } break;
+
+                case 'y':
+                {
+                    uint8_t r = 0;
+                    arg.Get("y", &r);
+                    res[name] = r;
+                } break;
+
+                case 'q':
+                {
+                    uint16_t r = 0;
+                    arg.Get("q", &r);
+                    res[name] = r;
+                } break;
+
+                case 'n':
+                {
+                    int16_t r = 0;
+                    arg.Get("n", &r);
+                    res[name] = r;
+                } break;
+
+                case 'u':
+                {
+                    uint32_t r = 0;
+                    arg.Get("u", &r);
+                    res[name] = r;
+                } break;
+
+                case 'i':
+                {
+                    int32_t r = 0;
+                    arg.Get("i", &r);
+                    res[name] = r;
+                } break;
+
+                case 't':
+                {
+                    uint64_t r = 0;
+                    arg.Get("t", &r);
+                    res[name] = r;
+                } break;
+
+                case 'x':
+                {
+                    int64_t r = 0;
+                    arg.Get("x", &r);
+                    res[name] = r;
+                } break;
+
+                case 'd':
+                {
+                    double r = 0.0;
+                    arg.Get("d", &r);
+                    res[name] = r;
+                } break;
+
+                case 's':
+                {
+                    char *str = 0;
+                    arg.Get("s", &str);
+                    res[name] = String(str);
+                } break;
+
+                case 'a': case 'e':
+                case 'r': case 'v':
+                case '(': case ')':
+                case '{': case '}':
+                default:
+                {
+                    hive::OStringStream oss;
+                    oss << "\"" << s << "\" is unsupported signature";
+                    throw std::runtime_error(oss.str());
+                } break;
+            }
+        }
+
+        return res;
+    }
 
 private: // remote bus list
     std::vector<AJ_BusProxyPtr> m_bus_proxies;
