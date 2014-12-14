@@ -1066,7 +1066,7 @@ private: // AllJoyn bus structure
 
             std::cerr << "CALL: " << ifaceName << "." << methodName
                          << " with \"" << meta.argSign << "\"-\""
-                            << meta.retSign << "\n";
+                            << meta.retSign << "\"\n";
             std::vector<ajn::MsgArg> args = AJ_fromJson(arg, meta);
             ajn::Message reply(*m_pBusProxy->m_bus);
 
@@ -1103,7 +1103,7 @@ private: // AllJoyn bus structure
             MsgArgInfo meta("", prop->signature.c_str(), propertyName);
 
             std::cerr << "GET-PROP: " << ifaceName << "." << propertyName
-                         << " with \"" << meta.retSign << "\n";
+                         << " with \"" << meta.retSign << "\"\n";
             std::vector<ajn::MsgArg> ret_args(1);
 
             // TODO: do it in async way
@@ -1150,7 +1150,7 @@ private: // AllJoyn bus structure
         AJ_BusProxyPtr m_pBusProxy;
     };
 
-private:
+public:
 
     struct MsgArgInfo
     {
@@ -1180,6 +1180,245 @@ private:
         }
     };
 
+
+    static ajn::MsgArg AJ_fromJson0(const json::Value &arg)
+    {
+        if (arg.isNull())
+            return ajn::MsgArg();
+
+        else if (arg.isBool())
+            return ajn::MsgArg("b", arg.asBool());
+
+        else if (arg.isInteger())
+            return ajn::MsgArg("x", arg.asInt());
+
+        else if (arg.isDouble())
+            return ajn::MsgArg("d", arg.asDouble());
+
+        else if (arg.isString())
+        {
+            String s = arg.asString();
+            ajn::MsgArg msg("s", s.c_str());
+            msg.Stabilize();
+            return msg;
+        }
+
+        hive::OStringStream oss;
+        oss << "\"" << arg << "\" cannot convert to MsgArg";
+        throw std::runtime_error(oss.str());
+    }
+
+
+    /**
+     */
+    static ajn::MsgArg AJ_fromJson1(const json::Value &val, const String &signature, size_t &sign_pos)
+    {
+        if (signature.empty())
+            throw std::runtime_error("not signature provided");
+
+        ajn::MsgArg res;
+        size_t pos_inc = 1;
+        switch (signature[sign_pos])
+        {
+            case 'b': res.Set("b", val.asBool()); break;
+            case 'y': res.Set("y", val.asUInt8()); break;
+            case 'q': res.Set("q", val.asUInt16()); break;
+            case 'n': res.Set("n", val.asInt16()); break;
+            case 'u': res.Set("u", val.asUInt32()); break;
+            case 'i': res.Set("i", val.asInt32()); break;
+            case 't': res.Set("t", val.asUInt64()); break;
+            case 'x': res.Set("x", val.asInt64()); break;
+            case 'd': res.Set("d", val.asDouble()); break;
+
+            case 's':
+            {
+                String str = val.asString();
+                res.Set("s", str.c_str());
+                res.Stabilize();
+            } break;
+
+            case 'o':
+            {
+                String str = val.asString();
+                res.Set("o", str.c_str());
+                res.Stabilize();
+            } break;
+
+            case 'g':
+            {
+                String str = val.asString();
+                res.Set("g", str.c_str());
+                res.Stabilize();
+            } break;
+
+            case 'v': // variant
+            {
+                ajn::MsgArg v = AJ_fromJson0(val);
+                res.Set("v", &v);
+                res.Stabilize();
+            } break;
+
+            case 'a':
+            {
+                String elem = AJ_elementSignature(signature, sign_pos+1);
+                if (elem.empty())
+                    throw std::runtime_error("unknown element signature");
+                sign_pos += elem.size();
+
+                const size_t n = val.size();
+                if (elem == "b")
+                {
+                    bool *v = new bool[n];
+                    for (size_t i = 0; i < n; ++i)
+                        v[i] = val[i].asBool();
+                    res.Set("ab", n, v);
+                    res.Stabilize();
+                    delete[] v;
+                }
+                else if (elem == "y")
+                {
+                    std::vector<u_int8_t> v(n);
+                    for (size_t i = 0; i < n; ++i)
+                        v[i] = val[i].asUInt8();
+                    res.Set("ay", n, n ? &v[0] : 0);
+                    res.Stabilize();
+                }
+                else if  (elem == "q")
+                {
+                    std::vector<u_int16_t> v(n);
+                    for (size_t i = 0; i < n; ++i)
+                        v[i] = val[i].asUInt16();
+                    res.Set("aq", n, n ? &v[0] : 0);
+                    res.Stabilize();
+                }
+                else if (elem == "n")
+                {
+                    std::vector<int16_t> v(n);
+                    for (size_t i = 0; i < n; ++i)
+                        v[i] = val[i].asInt16();
+                    res.Set("an", n, n ? &v[0] : 0);
+                    res.Stabilize();
+                }
+                else if (elem == "u")
+                {
+                    std::vector<u_int32_t> v(n);
+                    for (size_t i = 0; i < n; ++i)
+                        v[i] = val[i].asUInt32();
+                    res.Set("au", n, n ? &v[0] : 0);
+                    res.Stabilize();
+                }
+                else if (elem == "i")
+                {
+                    std::vector<int32_t> v(n);
+                    for (size_t i = 0; i < n; ++i)
+                        v[i] = val[i].asInt32();
+                    res.Set("ai", n, n ? &v[0] : 0);
+                    res.Stabilize();
+                }
+                else if (elem == "t")
+                {
+                    std::vector<u_int64_t> v(n);
+                    for (size_t i = 0; i < n; ++i)
+                        v[i] = val[i].asUInt64();
+                    res.Set("at", n, n ? &v[0] : 0);
+                    res.Stabilize();
+                }
+                else if (elem == "x")
+                {
+                    std::vector<int64_t> v(n);
+                    for (size_t i = 0; i < n; ++i)
+                        v[i] = val[i].asInt64();
+                    res.Set("ax", n, n ? &v[0] : 0);
+                    res.Stabilize();
+                }
+                else if (elem == "d")
+                {
+                    std::vector<double> v(n);
+                    for (size_t i = 0; i < n; ++i)
+                        v[i] = val[i].asDouble();
+                    res.Set("ad", n, n ? &v[0] : 0);
+                    res.Stabilize();
+                }
+                else if (elem == "s")
+                {
+                    std::vector<String> vv(n);
+                    std::vector<const char*> v(n);
+                    for (size_t i = 0; i < n; ++i)
+                    {
+                        vv[i] = val[i].asString();
+                        v[i] = vv[i].c_str();
+                    }
+                    res.Set("as", n, n ? &v[0] : 0);
+                    res.Stabilize();
+                }
+                else if (elem == "o")
+                {
+                    std::vector<String> vv(n);
+                    std::vector<const char*> v(n);
+                    for (size_t i = 0; i < n; ++i)
+                    {
+                        vv[i] = val[i].asString();
+                        v[i] = vv[i].c_str();
+                    }
+                    res.Set("ao", n, n ? &v[0] : 0);
+                    res.Stabilize();
+                }
+                else if (elem == "g")
+                {
+                    std::vector<String> vv(n);
+                    std::vector<const char*> v(n);
+                    for (size_t i = 0; i < n; ++i)
+                    {
+                        vv[i] = val[i].asString();
+                        v[i] = vv[i].c_str();
+                    }
+                    res.Set("ag", n, n ? &v[0] : 0);
+                    res.Stabilize();
+                }
+                else if (elem[0] == '{' && elem[elem.size()-1] == '}')
+                {
+                    std::vector<ajn::MsgArg> v(n);
+                    json::Value::MemberIterator i = val.membersBegin();
+                    for (size_t k = 0; i != val.membersEnd(); ++i, ++k)
+                    {
+                        String      d_key = i->first;
+                        json::Value d_val = i->second;
+
+                        size_t p = 1;
+                        ajn::MsgArg a_key = AJ_fromJson1(d_key, elem, p); p += 1;
+                        ajn::MsgArg a_val = AJ_fromJson1(d_val, elem, p);
+
+                        v[k].Set("{**}", &a_key, &a_val);
+                    }
+
+                    res.Set(("a" + elem).c_str(), n, n ? &v[0] : 0);
+                    res.Stabilize();
+                }
+                else
+                {
+                    hive::OStringStream oss;
+                    oss << "\"" << elem << "\" is unsupported element signature";
+                    throw std::runtime_error(oss.str());
+                }
+            } break;
+
+            case 'e':
+            case 'r':
+            case '(': case ')':
+            case '{': case '}':
+            default:
+            {
+                hive::OStringStream oss;
+                oss << "\"" << signature << "\" is unsupported signature";
+                throw std::runtime_error(oss.str());
+            } break;
+        }
+
+        //sign_pos += pos_inc;
+        return res;
+    }
+
+
     /**
      * @brief Convert JSON to AllJoyn message.
      * @return List of MsgArg.
@@ -1191,45 +1430,351 @@ private:
         std::vector<ajn::MsgArg> res;
 
         const String &sign = meta.argSign;
-        for (int i = 0; i < sign.size(); ++i)
+        for (size_t i = 0, k = 0; i < sign.size(); ++i, ++k)
         {
-            String name = meta.getArgName(i);
-            const char s = sign[i];
-            ajn::MsgArg arg;
-
-            switch (s)
-            {
-                case 'b': arg.Set("b", val[name].asBool()); break;
-                case 'y': arg.Set("y", val[name].asUInt8()); break;
-                case 'q': arg.Set("q", val[name].asUInt16()); break;
-                case 'n': arg.Set("n", val[name].asInt16()); break;
-                case 'u': arg.Set("u", val[name].asUInt32()); break;
-                case 'i': arg.Set("i", val[name].asInt32()); break;
-                case 't': arg.Set("t", val[name].asUInt64()); break;
-                case 'x': arg.Set("x", val[name].asInt64()); break;
-                case 'd': arg.Set("d", val[name].asDouble()); break;
-                case 's':
-                {
-                    String str = val[name].asString();
-                    arg.Set("s", str.c_str());
-                    arg.Stabilize();
-                } break;
-
-                case 'a': case 'e':
-                case 'r': case 'v':
-                case '(': case ')':
-                case '{': case '}':
-                default:
-                {
-                    hive::OStringStream oss;
-                    oss << "\"" << s << "\" is unsupported signature";
-                    throw std::runtime_error(oss.str());
-                } break;
-            }
-
+            String name = meta.getArgName(k);
+            ajn::MsgArg arg = AJ_fromJson1(val[name], sign, i);
             res.push_back(arg);
         }
 
+        return res;
+    }
+
+    static json::Value AJ_toJson0(const ajn::MsgArg *arg)
+    {
+        if (!arg)
+            return json::Value::null();
+
+        switch (arg->typeId)
+        {
+            case ajn::ALLJOYN_INVALID:
+                return json::Value::null();
+
+            case ajn::ALLJOYN_BOOLEAN:
+                return json::Value(arg->v_bool);
+
+            case ajn::ALLJOYN_DOUBLE:
+                return json::Value(arg->v_double);
+
+            case ajn::ALLJOYN_SIGNATURE:
+                return json::Value(String(arg->v_signature.sig, arg->v_signature.len));
+
+            case ajn::ALLJOYN_INT32:
+                return json::Value(arg->v_int32);
+
+            case ajn::ALLJOYN_INT16:
+                return json::Value(arg->v_int16);
+
+            case ajn::ALLJOYN_OBJECT_PATH:
+                return json::Value(String(arg->v_objPath.str, arg->v_objPath.len));
+
+            case ajn::ALLJOYN_UINT16:
+                return json::Value(arg->v_uint16);
+
+            case ajn::ALLJOYN_STRING:
+                return json::Value(String(arg->v_objPath.str, arg->v_objPath.len));
+
+            case ajn::ALLJOYN_UINT64:
+                return json::Value(arg->v_uint64);
+
+            case ajn::ALLJOYN_UINT32:
+                return json::Value(arg->v_uint32);
+
+            case ajn::ALLJOYN_INT64:
+                return json::Value(arg->v_int64);
+
+            case ajn::ALLJOYN_BYTE:
+                return json::Value(arg->v_byte);
+
+//            case ajn::ALLJOYN_BOOLEAN_ARRAY:
+//            case ajn::ALLJOYN_DOUBLE_ARRAY:
+//            case ajn::ALLJOYN_INT32_ARRAY:
+//            case ajn::ALLJOYN_INT16_ARRAY:
+//            case ajn::ALLJOYN_UINT16_ARRAY:
+//            case ajn::ALLJOYN_UINT64_ARRAY:
+//            case ajn::ALLJOYN_UINT32_ARRAY:
+//            case ajn::ALLJOYN_INT64_ARRAY:
+//            case ajn::ALLJOYN_BYTE_ARRAY:
+
+            default:
+                hive::OStringStream oss;
+                oss << "\"" << arg->ToString().c_str() << "\" cannot convert to JSON";
+                throw std::runtime_error(oss.str());
+        }
+    }
+
+    /**
+     */
+    static json::Value AJ_toJson1(const ajn::MsgArg &arg, const String &signature, size_t &sign_pos)
+    {
+        if (signature.empty())
+            throw std::runtime_error("no signature provided");
+        json::Value res;
+
+        size_t pos_inc = 1;
+        switch (signature[sign_pos])
+        {
+            case 'b':
+            {
+                bool r = false;
+                arg.Get("b", &r);
+                res = r;
+            } break;
+
+            case 'y':
+            {
+                uint8_t r = 0;
+                arg.Get("y", &r);
+                res = r;
+            } break;
+
+            case 'q':
+            {
+                uint16_t r = 0;
+                arg.Get("q", &r);
+                res = r;
+            } break;
+
+            case 'n':
+            {
+                int16_t r = 0;
+                arg.Get("n", &r);
+                res = r;
+            } break;
+
+            case 'u':
+            {
+                uint32_t r = 0;
+                arg.Get("u", &r);
+                res = r;
+            } break;
+
+            case 'i':
+            {
+                int32_t r = 0;
+                arg.Get("i", &r);
+                res = r;
+            } break;
+
+            case 't':
+            {
+                uint64_t r = 0;
+                arg.Get("t", &r);
+                res = r;
+            } break;
+
+            case 'x':
+            {
+                int64_t r = 0;
+                arg.Get("x", &r);
+                res = r;
+            } break;
+
+            case 'd':
+            {
+                double r = 0.0;
+                arg.Get("d", &r);
+                res = r;
+            } break;
+
+            case 's':
+            {
+                char *str = 0;
+                arg.Get("s", &str);
+                res = String(str);
+            } break;
+
+            case 'o':
+            {
+                char *str = 0;
+                arg.Get("o", &str);
+                res = String(str);
+            } break;
+
+            case 'g':
+            {
+                char *str = 0;
+                arg.Get("g", &str);
+                res = String(str);
+            } break;
+
+            case 'a':
+            {
+                String elem = AJ_elementSignature(signature, sign_pos+1);
+                if (elem.empty())
+                    throw std::runtime_error("unknown element signature");
+                sign_pos += elem.size();
+
+                if (elem == "b")
+                {
+                    size_t n = 0;
+                    bool *v = 0;
+                    arg.Get("ab", &n, &v);
+                    res.resize(n);
+                    for (size_t i = 0; i < n; ++i)
+                        res[i] = v[i];
+                }
+                else if (elem == "y")
+                {
+                    size_t n = 0;
+                    uint8_t *v = 0;
+                    arg.Get("ay", &n, &v);
+                    res.resize(n);
+                    for (size_t i = 0; i < n; ++i)
+                        res[i] = v[i];
+                }
+                else if  (elem == "q")
+                {
+                    size_t n = 0;
+                    uint16_t *v = 0;
+                    arg.Get("aq", &n, &v);
+                    res.resize(n);
+                    for (size_t i = 0; i < n; ++i)
+                        res[i] = v[i];
+                }
+                else if (elem == "n")
+                {
+                    size_t n = 0;
+                    int16_t *v = 0;
+                    arg.Get("an", &n, &v);
+                    res.resize(n);
+                    for (size_t i = 0; i < n; ++i)
+                        res[i] = v[i];
+                }
+                else if (elem == "u")
+                {
+                    size_t n = 0;
+                    uint32_t *v = 0;
+                    arg.Get("au", &n, &v);
+                    res.resize(n);
+                    for (size_t i = 0; i < n; ++i)
+                        res[i] = v[i];
+                }
+                else if (elem == "i")
+                {
+                    size_t n = 0;
+                    int32_t *v = 0;
+                    arg.Get("ai", &n, &v);
+                    res.resize(n);
+                    for (size_t i = 0; i < n; ++i)
+                        res[i] = v[i];
+                }
+                else if (elem == "t")
+                {
+                    size_t n = 0;
+                    uint64_t *v = 0;
+                    arg.Get("at", &n, &v);
+                    res.resize(n);
+                    for (size_t i = 0; i < n; ++i)
+                        res[i] = v[i];
+                }
+                else if (elem == "x")
+                {
+                    size_t n = 0;
+                    int64_t *v = 0;
+                    arg.Get("ax", &n, &v);
+                    res.resize(n);
+                    for (size_t i = 0; i < n; ++i)
+                        res[i] = v[i];
+                }
+                else if (elem == "d")
+                {
+                    size_t n = 0;
+                    double *v = 0;
+                    arg.Get("ad", &n, &v);
+                    res.resize(n);
+                    for (size_t i = 0; i < n; ++i)
+                        res[i] = v[i];
+                }
+                else if (elem == "s")
+                {
+                    size_t n = 0;
+                    ajn::MsgArg *v = 0;
+                    arg.Get("as", &n, &v);
+                    res.resize(n);
+                    for (size_t i = 0; i < n; ++i)
+                    {
+                        char *s = 0;
+                        v[i].Get("s", &s);
+                        res[i] = String(s);
+                    }
+                }
+                else if (elem == "o")
+                {
+                    size_t n = 0;
+                    ajn::MsgArg *v = 0;
+                    arg.Get("ao", &n, &v);
+                    res.resize(n);
+                    for (size_t i = 0; i < n; ++i)
+                    {
+                        char *s = 0;
+                        v[i].Get("o", &s);
+                        res[i] = String(s);
+                    }
+                }
+                else if (elem == "g")
+                {
+                    size_t n = 0;
+                    ajn::MsgArg *v = 0;
+                    arg.Get("ag", &n, &v);
+                    res.resize(n);
+                    for (size_t i = 0; i < n; ++i)
+                    {
+                        char *s = 0;
+                        v[i].Get("g", &s);
+                        res[i] = String(s);
+                    }
+                }
+                else if (elem[0] == '{' && elem[elem.size()-1] == '}') // dictionary entries
+                {
+                    size_t n = 0;
+                    ajn::MsgArg *v = 0;
+                    arg.Get(("a" + elem).c_str(), &n, &v);
+                    for (size_t i = 0; i < n; ++i)
+                    {
+                        ajn::MsgArg *dk = 0;
+                        ajn::MsgArg *dv = 0;
+                        v[i].Get("{**}", &dk, &dv);
+
+                        json::Value kk = AJ_toJson0(dk);
+                        json::Value vv = AJ_toJson0(dv);
+
+                        std::cerr << "AJ->json: " << dv->typeId << " " << dv->ToString().c_str() << " = " << vv << "\n";
+
+                        res[kk.asString()] = vv;
+                    }
+                }
+                else
+                {
+                    hive::OStringStream oss;
+                    oss << "\"" << elem << "\" is unsupported element signature";
+                    throw std::runtime_error(oss.str());
+                }
+            } break;
+
+//            case '(': // structure
+//            {
+//                String elem = AJ_elementSignature(signature, sign_pos);
+//                if (elem.empty())
+//                    throw std::runtime_error("unknown element signature");
+//                sign_pos += elem.size();
+
+//                return AJ_toJson(std::vector<ajn::MsgArg>(1, arg), MsgArgInfo(elem.substr(1, elem.size()-1), "", "xxx"));
+//            } break;
+
+            case 'e':
+            case 'r': case 'v':
+            case '(': case ')':
+            case '{': case '}':
+            default:
+            {
+                hive::OStringStream oss;
+                oss << "\"" << signature << "\" is unsupported signature";
+                throw std::runtime_error(oss.str());
+            } break;
+        }
+
+        //sign_pos += pos_inc;
         return res;
     }
 
@@ -1245,98 +1790,63 @@ private:
         json::Value res;
 
         const String &sign = meta.retSign;
-        for (int i = 0; i < sign.size(); ++i)
+        for (size_t i = 0, k = 0; i < sign.size(); ++i, ++k)
         {
-            String name = meta.getArgName(i+arg_offset);
-            ajn::MsgArg arg = (i < args.size()) ? args[i] : ajn::MsgArg();
-            const char s = sign[i];
-
-            switch (s)
-            {
-                case 'b':
-                {
-                    bool r = false;
-                    arg.Get("b", &r);
-                    res[name] = r;
-                } break;
-
-                case 'y':
-                {
-                    uint8_t r = 0;
-                    arg.Get("y", &r);
-                    res[name] = r;
-                } break;
-
-                case 'q':
-                {
-                    uint16_t r = 0;
-                    arg.Get("q", &r);
-                    res[name] = r;
-                } break;
-
-                case 'n':
-                {
-                    int16_t r = 0;
-                    arg.Get("n", &r);
-                    res[name] = r;
-                } break;
-
-                case 'u':
-                {
-                    uint32_t r = 0;
-                    arg.Get("u", &r);
-                    res[name] = r;
-                } break;
-
-                case 'i':
-                {
-                    int32_t r = 0;
-                    arg.Get("i", &r);
-                    res[name] = r;
-                } break;
-
-                case 't':
-                {
-                    uint64_t r = 0;
-                    arg.Get("t", &r);
-                    res[name] = r;
-                } break;
-
-                case 'x':
-                {
-                    int64_t r = 0;
-                    arg.Get("x", &r);
-                    res[name] = r;
-                } break;
-
-                case 'd':
-                {
-                    double r = 0.0;
-                    arg.Get("d", &r);
-                    res[name] = r;
-                } break;
-
-                case 's':
-                {
-                    char *str = 0;
-                    arg.Get("s", &str);
-                    res[name] = String(str);
-                } break;
-
-                case 'a': case 'e':
-                case 'r': case 'v':
-                case '(': case ')':
-                case '{': case '}':
-                default:
-                {
-                    hive::OStringStream oss;
-                    oss << "\"" << s << "\" is unsupported signature";
-                    throw std::runtime_error(oss.str());
-                } break;
-            }
+            String name = meta.getArgName(k+arg_offset);
+            ajn::MsgArg arg = (k < args.size()) ? args[k] : ajn::MsgArg();
+            res[name] = AJ_toJson1(arg, sign, i);
         }
 
         return res;
+    }
+
+
+    static String AJ_elementSignature(const String &sign, size_t i)
+    {
+        size_t n = 1;
+
+        if (sign[i] == '(')
+        {
+            int deep = 1;
+            for (size_t k = i+1; k < sign.size(); ++k)
+            {
+                const int s = sign[k];
+                if (s == 'a')
+                {
+                    String ss = AJ_elementSignature(sign, k+1);
+                    k += ss.size();
+                }
+                else if (s == '(')
+                    ++deep;
+                else if (s == ')' && --deep == 0)
+                {
+                    n = k-i+1;
+                    break;
+                }
+            }
+        }
+        else if (sign[i] == '{')
+        {
+            int deep = 1;
+            for (size_t k = i+1; k < sign.size(); ++k)
+            {
+                const int s = sign[k];
+                if (s == 'a')
+                {
+                    String ss = AJ_elementSignature(sign, k+1);
+                    k += ss.size();
+                }
+                else if (s == '{')
+                    ++deep;
+                else if (s == '}' && --deep == 0)
+                {
+                    n = k-i+1;
+                    break;
+                }
+            }
+        }
+
+        return sign.substr(i, n);
     }
 
 private: // remote bus list
@@ -1435,6 +1945,73 @@ inline void main(int argc, const char* argv[])
         log_file->setNumberOfBackups(1);
         log_file->setFormat(Format::create("%T %N %L [%I] %M\n"));
         log_file->startNew();
+    }
+
+    if (0) // json <-> MsgArg conversion
+    {
+        std::cerr << Application::AJ_elementSignature("auxxx", 1) << "\n";
+        std::cerr << Application::AJ_elementSignature("asxxx", 1) << "\n";
+        std::cerr << Application::AJ_elementSignature("a(ss)xxx", 1) << "\n";
+        std::cerr << Application::AJ_elementSignature("xa{sv}xxx", 2) << "\n";
+        std::cerr << Application::AJ_elementSignature("(uasu)xxx", 0) << "\n";
+        std::cerr << "\n\n";
+    }
+
+    if (0)
+    {
+        ajn::MsgArg msg;
+        const char* v[] = {"Hello","World"};
+        msg.Set("(uasu)", 111, 2, v, 222);
+        msg.Stabilize();
+        std::cerr << msg.ToString().c_str() << "\n\n";
+
+        Application::MsgArgInfo meta("", "(uasu)", "v1,v2,v3");
+        json::Value j_val = Application::AJ_toJson(std::vector<ajn::MsgArg>(1, msg), meta);
+        std::cerr << j_val << "\n\n";
+
+        Application::MsgArgInfo meta2 = meta;
+        meta2.argSign = meta2.retSign;
+        std::vector<ajn::MsgArg> msg2 = Application::AJ_fromJson(j_val, meta2);
+        for (size_t i = 0; i < msg2.size(); ++i)
+            std::cerr << msg2[i].ToString().c_str() << "\n\n";
+    }
+
+    if (0)
+    {
+        ajn::MsgArg dict[3];
+        dict[0].Set("{is}", 1, "first");
+        dict[1].Set("{is}", 2, "second");
+        dict[2].Set("{is}", 3, "third");
+
+        ajn::MsgArg msg;
+        msg.Set("a{is}", 3, dict);
+        msg.Stabilize();
+        std::cerr << msg.ToString().c_str() << "\n\n";
+
+        Application::MsgArgInfo meta("", "a{is}", "v1,v2,v3");
+        json::Value j_val = Application::AJ_toJson(std::vector<ajn::MsgArg>(1, msg), meta);
+        std::cerr << j_val << "\n\n";
+
+        Application::MsgArgInfo meta2 = meta;
+        meta2.argSign = meta2.retSign;
+        std::vector<ajn::MsgArg> msg2 = Application::AJ_fromJson(j_val, meta2);
+        for (size_t i = 0; i < msg2.size(); ++i)
+            std::cerr << msg2[i].ToString().c_str() << "\n\n";
+    }
+
+    if (0)
+    {
+        Application::MsgArgInfo meta("", "a{sv}", "v1,v2,v3");
+        json::Value j_val = json::fromStr("{\"v1\": { \"a\":1, \"b\":2, \"c\":3 }}");
+        std::cerr << j_val << "\n\n";
+
+        Application::MsgArgInfo meta2 = meta;
+        meta2.argSign = meta2.retSign;
+        std::vector<ajn::MsgArg> msg2 = Application::AJ_fromJson(j_val, meta2);
+        for (size_t i = 0; i < msg2.size(); ++i)
+            std::cerr << msg2[i].ToString().c_str() << "\n\n";
+
+        return;
     }
 
     Application::create(argc, argv)->run();
