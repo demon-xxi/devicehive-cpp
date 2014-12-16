@@ -103,7 +103,7 @@ public:
         String networkKey = "";
         String networkDesc = "C++ device test network";
 
-        String baseUrl = "http://devicehive1-java/devicehive/rest";
+        String baseUrl = "http://alljoyn.pgcloud.devicehive.com/DeviceHive/rest";
         size_t web_timeout = 0; // zero - don't change
         String http_version;
 
@@ -1100,17 +1100,16 @@ private: // AllJoyn bus structure
             if ((prop->access&ajn::PROP_ACCESS_READ) == 0)
                 throw std::runtime_error("property is not readable");
 
-            MsgArgInfo meta("", prop->signature.c_str(), propertyName);
-
             std::cerr << "GET-PROP: " << ifaceName << "." << propertyName
-                         << " with \"" << meta.retSign << "\"\n";
-            std::vector<ajn::MsgArg> ret_args(1);
+                         << " with \"" << prop->signature.c_str() << "\"\n";
+            ajn::MsgArg ret;
 
             // TODO: do it in async way
-            QStatus status = m_proxy.GetProperty(ifaceName.c_str(), propertyName.c_str(), ret_args[0]);
+            QStatus status = m_proxy.GetProperty(ifaceName.c_str(), propertyName.c_str(), ret);
             if (ER_OK == status)
             {
-                *val = AJ_toJson(ret_args, meta, 0);
+                size_t sign_pos = 0;
+                *val = AJ_toJson1(ret, prop->signature.c_str(), sign_pos);
             }
 
             return String(QCC_StatusText(status));
@@ -1130,17 +1129,13 @@ private: // AllJoyn bus structure
             if ((prop->access&ajn::PROP_ACCESS_WRITE) == 0)
                 throw std::runtime_error("property is not writable");
 
-            MsgArgInfo meta(prop->signature.c_str(), "", propertyName);
-
             std::cerr << "SET-PROP: " << ifaceName << "." << propertyName
-                         << " with \"" << meta.argSign << "\"\n";
-            std::vector<ajn::MsgArg> args = AJ_fromJson(val, meta);
-
-            if (args.size() != 1)
-                throw std::runtime_error("no value parsed");
+                         << " with \"" << prop->signature.c_str() << "\"\n";
+            size_t sign_pos = 0;
+            ajn::MsgArg arg = AJ_fromJson1(val, prop->signature.c_str(), sign_pos);
 
             // TODO: do it in async way
-            QStatus status = m_proxy.SetProperty(ifaceName.c_str(), propertyName.c_str(), args[0]);
+            QStatus status = m_proxy.SetProperty(ifaceName.c_str(), propertyName.c_str(), arg);
             return String(QCC_StatusText(status));
         }
 
@@ -1510,6 +1505,8 @@ public:
         if (signature.empty())
             throw std::runtime_error("no signature provided");
         json::Value res;
+
+        std::cerr << "AJ->toJson \"" << signature << "\", pos:" << sign_pos;
 
         size_t pos_inc = 1;
         switch (signature[sign_pos])
