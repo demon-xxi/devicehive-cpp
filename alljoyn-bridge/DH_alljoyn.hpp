@@ -128,6 +128,10 @@ public:
 
                 exit(1);
             }
+            else if (boost::algorithm::iequals(argv[i], "--gatewayId") && i+1 < argc)
+                gatewayId = argv[++i];
+            else if (boost::algorithm::iequals(argv[i], "--gatewayKey") && i+1 < argc)
+                gatewayKey = argv[++i];
             else if (boost::algorithm::iequals(argv[i], "--networkName") && i+1 < argc)
                 networkName = argv[++i];
             else if (boost::algorithm::iequals(argv[i], "--networkKey") && i+1 < argc)
@@ -412,7 +416,8 @@ private: // devicehive::IDeviceServiceEvents
 
                     command->result = pObj->getInterfaceInfo(cmd_params["interface"].asString());
                 }
-                else if (cmd_name == "AllJoyn/CallMethod")
+                else if (cmd_name == "AllJoyn/CallMethod"
+                      || cmd_name == "AllJoyn/MethodCall")
                 {
                     const json::Value &j_addr = cmd_params;
 
@@ -1505,8 +1510,6 @@ public:
         if (signature.empty())
             throw std::runtime_error("no signature provided");
         json::Value res;
-
-        std::cerr << "AJ->toJson \"" << signature << "\", pos:" << sign_pos;
 
         size_t pos_inc = 1;
         switch (signature[sign_pos])
