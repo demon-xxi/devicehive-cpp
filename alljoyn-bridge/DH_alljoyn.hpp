@@ -20,6 +20,7 @@
 
 #include "hexUtils.hpp"
 #include <functional>
+#include <set>
 
 // constants
 static const char* BUS_NAME = "DeviceHiveToAllJoynGatewayConnector";
@@ -336,6 +337,7 @@ private: // devicehive::IDeviceServiceEvents
             handleError(err, "registering device");
     }
 
+    std::set<const ajn::InterfaceDescription::Member*> m_watchSignals;
 
     /// @copydoc devicehive::IDeviceServiceEvents::onInsertCommand()
     virtual void onInsertCommand(ErrorCode err, devicehive::DevicePtr device, devicehive::CommandPtr command)
@@ -546,8 +548,15 @@ private: // devicehive::IDeviceServiceEvents
                     const ajn::InterfaceDescription::Member *s = i->GetSignal(signal.c_str());
                     if (!s) throw std::runtime_error("no signal found");
 
-                    QStatus status = m_AJ_bus->RegisterSignalHandler(this, (MessageReceiver::SignalHandler)&This::onSignalHandler, s, obj.empty() ? NULL : obj.c_str());
-                    AJ_check(status, "failed to register signal handler");
+                    if (m_watchSignals.insert(s).second)
+                    {
+                        QStatus status = m_AJ_bus->RegisterSignalHandler(this, (MessageReceiver::SignalHandler)&This::onSignalHandler, s, obj.empty() ? NULL : obj.c_str());
+                        AJ_check(status, "failed to register signal handler");
+                    }
+                    else
+                    {
+                        command->result = "Already exists";
+                    }
                 }
                 else if (cmd_name == "AllJoyn/UnwatchSignal")
                 {
@@ -561,6 +570,7 @@ private: // devicehive::IDeviceServiceEvents
                     const ajn::InterfaceDescription::Member *s = i->GetSignal(signal.c_str());
                     if (!s) throw std::runtime_error("no signal found");
 
+                    m_watchSignals.erase(s);
                     QStatus status = m_AJ_bus->UnregisterSignalHandler(this, (MessageReceiver::SignalHandler)&This::onSignalHandler, s, obj.empty() ? NULL : obj.c_str());
                     AJ_check(status, "failed to unregister signal handler");
                 }
