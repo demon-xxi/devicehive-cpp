@@ -452,6 +452,39 @@ private: // devicehive::IDeviceServiceEvents
 
                     command->status = pObj->getProperty(iface, property, &command->result);
                 }
+                else if (cmd_name == "AllJoyn/GetProperties")
+                {
+                    const json::Value &j_addr = cmd_params;
+
+                    AJ_BusProxyPtr pBus = getBusProxy(j_addr["bus"].asString(),
+                                                      j_addr["port"].asInt());
+                    if (!pBus) throw std::runtime_error("not bus found");
+
+                    AJ_ObjProxyPtr pObj = getObjProxy(pBus, j_addr["object"].asString());
+                    if (!pObj) throw std::runtime_error("no object found");
+
+                    String iface = cmd_params["interface"].asString();
+                    json::Value properties = cmd_params["properties"];
+
+                    if (properties.isString())
+                        command->status = pObj->getProperty(iface, properties.asString(), &command->result);
+                    else if (properties.isArray())
+                    {
+                        String status;
+                        json::Value result;
+                        for (size_t i = 0; i < properties.size(); ++i)
+                        {
+                            String name = properties[i].asString();
+
+                            if (i) status += ", ";
+                            status += pObj->getProperty(iface, name, &result[name]);
+                        }
+                        command->status = status;
+                        command->result = result;
+                    }
+                    else
+                        throw std::runtime_error("unknown property to get");
+                }
                 else if (cmd_name == "AllJoyn/SetProperty")
                 {
                     const json::Value &j_addr = cmd_params;
@@ -468,6 +501,37 @@ private: // devicehive::IDeviceServiceEvents
                     json::Value val = cmd_params["value"];
 
                     command->status = pObj->setProperty(iface, property, val);
+                    command->result = json::Value::null();
+                }
+                else if (cmd_name == "AllJoyn/SetProperties")
+                {
+                    const json::Value &j_addr = cmd_params;
+
+                    AJ_BusProxyPtr pBus = getBusProxy(j_addr["bus"].asString(),
+                                                      j_addr["port"].asInt());
+                    if (!pBus) throw std::runtime_error("not bus found");
+
+                    AJ_ObjProxyPtr pObj = getObjProxy(pBus, j_addr["object"].asString());
+                    if (!pObj) throw std::runtime_error("no object found");
+
+                    String iface = cmd_params["interface"].asString();
+                    json::Value properties = cmd_params["properties"];
+
+                    if (!properties.isObject())
+                        throw std::runtime_error("invalid request, not an object");
+
+                    json::Value::MemberIterator i, b = properties.membersBegin();
+                    String status;
+                    for (i = b; i != properties.membersEnd(); ++i)
+                    {
+                        String name = i->first;
+                        json::Value val = i->second;
+
+                        if (i != b) status += ", ";
+                        status += pObj->setProperty(iface, name, val);
+                    }
+
+                    command->status = status;
                     command->result = json::Value::null();
                 }
                 else if (cmd_name == "AllJoyn/WatchSignal")
