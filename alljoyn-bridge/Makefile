@@ -52,8 +52,8 @@ endif
 
 
 ALLJOYN_LIB := $(ALLJOYN_DIST)/lib/liballjoyn.a
-LIBS += -lalljoyn -lstdc++ -lcrypto -lpthread -lrt -lssl -ldl
 include_dirs+=-I$(ALLJOYN_DIST)/inc
+LIBS += -lalljoyn -lalljoyn_about -lstdc++ -lcrypto -lpthread -lrt -lssl -ldl
 defines+=-DQCC_OS_LINUX -DQCC_OS_GROUP_POSIX -DQCC_CPU_X86
 defines+=-DARDUINO_BRIDGE_ENABLED
 
@@ -80,6 +80,7 @@ yun_package: AJ_serial DH_alljoyn
 	@cp ${home_path}/DH_alljoyn ${YUN_PACKAGE}/usr/bin
 	@cp ${home_path}/AJ_serial ${YUN_PACKAGE}/usr/bin
 	@cp ${ALLJOYN_DIST}/lib/liballjoyn.so ${YUN_PACKAGE}/usr/lib/
+	@cp ${ALLJOYN_DIST}/lib/liballjoyn_about.so ${YUN_PACKAGE}/usr/lib/
 	@cp ${ALLJOYN_DIST}/bin/alljoyn-daemon ${YUN_PACKAGE}/usr/bin/
 	@chmod +x ${YUN_PACKAGE}/etc/init.d/devicehive-alljoyn
 	@chmod +x ${YUN_PACKAGE}/etc/init.d/devicehive-gateway
@@ -101,6 +102,7 @@ rpi_package: AJ_serial DH_alljoyn
 	@cp ${home_path}/DH_alljoyn ${RPI_PACKAGE}/usr/bin/
 	@cp ${home_path}/AJ_serial ${RPI_PACKAGE}/usr/bin/
 	@cp ${ALLJOYN_DIST}/lib/liballjoyn.so ${RPI_PACKAGE}/usr/lib/
+	@cp ${ALLJOYN_DIST}/lib/liballjoyn_about.so ${RPI_PACKAGE}/usr/lib/
 	@cp ${ALLJOYN_DIST}/bin/alljoyn-daemon ${RPI_PACKAGE}/usr/bin/
 	@cp ${home_path}/gateway_manager.py ${RPI_PACKAGE}/usr/bin/
 	@chmod +x ${RPI_PACKAGE}/etc/init.d/devicehive-alljoyn
@@ -118,6 +120,7 @@ x86_package: AJ_serial DH_alljoyn
 	@cp ${home_path}/DH_alljoyn ${X86_PACKAGE}/usr/bin/
 	@cp ${home_path}/AJ_serial ${X86_PACKAGE}/usr/bin/
 	@cp ${ALLJOYN_DIST}/lib/liballjoyn.so ${X86_PACKAGE}/usr/lib/
+	@cp ${ALLJOYN_DIST}/lib/liballjoyn_about.so ${X86_PACKAGE}/usr/lib/
 	@cp ${ALLJOYN_DIST}/bin/alljoyn-daemon ${X86_PACKAGE}/usr/bin/
 	@cp ${home_path}/gateway_manager.py ${X86_PACKAGE}/usr/bin/
 	@chmod +x ${X86_PACKAGE}/etc/init.d/devicehive-alljoyn

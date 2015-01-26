@@ -14,6 +14,7 @@
 #include <alljoyn/BusAttachment.h>
 #include <alljoyn/ProxyBusObject.h>
 #include <alljoyn/InterfaceDescription.h>
+#include <alljoyn/AuthListener.h>
 
 #include <alljoyn/about/AnnounceHandler.h>
 #include <alljoyn/about/AnnouncementRegistrar.h>
@@ -64,6 +65,7 @@ class Application:
     public basic_app::Application,
         public ajn::BusListener,
         public ajn::SessionListener,
+        public ajn::AuthListener,
         public ajn::services::AnnounceHandler,
         public ajn::BusAttachment::PingAsyncCB,
         public devicehive::IDeviceServiceEvents
@@ -78,6 +80,7 @@ protected:
         : m_disableWebsockets(false)
         , m_disableWebsocketPingPong(false)
         , m_gw_dev_registered(false)
+        , m_authPassword("000000")
         , m_log_AJ("AllJoyn")
     {}
 
@@ -233,6 +236,10 @@ private:
         AJ_check(status, "failed to connect AllJoyn bus");
         HIVELOG_INFO(m_log_AJ, "connected to bus:\""
             << m_AJ_bus->GetUniqueName().c_str() << "\"");
+
+        HIVELOG_TRACE(m_log_AJ, "enabling security");
+        status = m_AJ_bus->EnablePeerSecurity("ALLJOYN_ECDHE_NULL ALLJOYN_ECDHE_PSK ALLJOYN_PIN_KEYX ALLJOYN_SRP_KEYX", this);
+        AJ_check(status, "failed to enable security");
     }
 
 protected:
@@ -357,6 +364,11 @@ private: // devicehive::IDeviceServiceEvents
 
                 if (false)
                     ;
+                else if (cmd_name == "AllJoyn/SetCredentials")
+                {
+                    m_authUserName = cmd_params["username"].asString();
+                    m_authPassword = cmd_params["password"].asString();
+                }
                 else if (cmd_name == "AllJoyn/WatchAnnounces")
                 {
                     const json::Value &j_ifaces = cmd_params;
@@ -740,6 +752,43 @@ private: // ajn::SessionListener interface
     virtual void SessionMemberRemoved(ajn::SessionId sessionId, const char* uniqueName)
     {
         HIVELOG_INFO(m_log_AJ, "session #" << sessionId << " member removed:\"" << uniqueName << "\"");
+    }
+
+private: // AuthListener interface
+
+    virtual bool RequestCredentials(const char* authMechanism, const char* peerName, uint16_t authCount, const char* userName, uint16_t credMask, Credentials& credentials)
+    {
+        HIVELOG_INFO(m_log_AJ, "RequestCredentials #" << authCount << " mechanism:\"" << authMechanism
+                     << "\", peer:\"" << peerName << "\", user:\"" << userName << "\", mask:" << hive::dump::hex(credMask));
+        bool res = false;
+
+        if (credMask&CRED_PASSWORD /*&& !m_authPassword.empty()*/)
+        {
+            const char *psw = m_authPassword.c_str();
+            credentials.SetPassword(psw);
+            HIVELOG_INFO(m_log_AJ, "\tset password: \"" << psw << "\"");
+            res = true;
+        }
+        if (credMask&CRED_USER_NAME /*&& !m_authUserName.empty()*/)
+        {
+            credentials.SetUserName(m_authUserName.c_str());
+            HIVELOG_INFO(m_log_AJ, "\tset username: \"" << m_authUserName << "\"");
+            res = true;
+        }
+
+        return res;
+    }
+
+    virtual void SecurityViolation(QStatus status, const ajn::Message& msg)
+    {
+        HIVELOG_WARN(m_log_AJ, "security violation:" << QCC_StatusText(status) << msg->ToString().c_str());
+    }
+
+    virtual void AuthenticationComplete(const char* authMechanism, const char* peerName, bool success)
+    {
+        HIVELOG_INFO(m_log_AJ, "AuthenticationComplete mechanism:\"" << authMechanism
+                     << "\", peer:\"" << peerName << "\", "
+                     << (success ? "SUCCESS":"FAILED"));
     }
 
 private: // ajn::services::AnnounceHandler
@@ -1979,6 +2028,8 @@ private:
 
 private:
     boost::shared_ptr<ajn::BusAttachment> m_AJ_bus;
+    String m_authPassword;
+    String m_authUserName;
 
 private:
     hive::log::Logger m_log_AJ;
