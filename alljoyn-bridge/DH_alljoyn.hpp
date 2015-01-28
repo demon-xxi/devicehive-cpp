@@ -945,7 +945,8 @@ private: // ajn::services::AnnounceHandler
         int    port;
 
         typedef std::vector<String> InterfaceList;
-        std::map<String, InterfaceList> objects;
+        typedef std::map<String, InterfaceList> ObjectsInfo;
+        ObjectsInfo objects;
 
 
         /**
@@ -1028,6 +1029,8 @@ private: // ajn::services::AnnounceHandler
             m_service->asyncInsertNotification(m_gw_dev, p);
         else
             m_pendingNotifications.push_back(p);
+
+        m_ios.post(boost::bind(&This::inspectRemoteBus, shared_from_this(), info));
     }
 
 private: // Ping
@@ -1379,6 +1382,81 @@ private: // AllJoyn bus structure
         ajn::ProxyBusObject m_proxy;
         AJ_BusProxyPtr m_pBusProxy;
     };
+
+private:
+    std::map<String, AJ_BusProxyPtr> m_busByDevId; // [dev_id] = bus
+    std::map<String, AJ_BusProxyPtr> m_busByDevName; // [dev_name] = bus
+
+    /**
+     * @brief Inspect remote bus for object identifiers.
+     */
+    void inspectRemoteBus(const AnnounceInfo &info)
+    {
+        typedef AnnounceInfo::ObjectsInfo::const_iterator Iterator;
+        for (Iterator i = info.objects.begin(); i != info.objects.end(); ++i)
+        {
+            const String &objectName = i->first;
+            const AnnounceInfo::InterfaceList &ifaces = i->second;
+
+            if (std::find(ifaces.begin(), ifaces.end(), String("org.alljoyn.About")) != ifaces.end())
+            {
+                HIVELOG_DEBUG(m_log, "inspecting \"" << objectName << "\" object");
+
+                ajn::services::AboutClient client(*m_AJ_bus);
+                AJ_BusProxyPtr pbus = getBusProxy(info.busName, info.port);
+                ajn::services::AboutClient::AboutData about_data;
+                QStatus status = client.GetAboutData(info.busName.c_str(), "", about_data, pbus->m_sessionId);
+                if (status == ER_OK)
+                {
+                    ajn::MsgArg dev_id_arg = about_data["DeviceId"];
+                    ajn::MsgArg dev_name_arg = about_data["DeviceName"];
+
+                    const char *dev_id = 0;
+                    dev_id_arg.Get("s", &dev_id);
+                    if (dev_id)
+                    {
+                        HIVELOG_INFO(m_log, "map deviceId:\"" << dev_id << "\" to bus:\"" << info.busName << "\", port:" << info.port);
+
+                        // add device identifier to the cache
+                        m_busByDevId[String(dev_id)] = pbus;
+                    }
+
+                    const char *dev_name = 0;
+                    dev_name_arg.Get("s", &dev_name);
+                    if (dev_name)
+                    {
+                        HIVELOG_INFO(m_log, "map deviceName:\"" << dev_name << "\" to bus:\"" << info.busName << "\", port:" << info.port);
+
+                        // add device identifier to the cache
+                        m_busByDevName[String(dev_name)] = pbus;
+                    }
+                }
+            }
+        }
+    }
+
+
+    /**
+     * @brief Find bus proxy by device identifier.
+     * @param devId The device identifier.
+     * @return The bus proxy or NULL.
+     */
+    AJ_BusProxyPtr findBusProxyByDevId(const String &devId) const
+    {
+        std::map<String, AJ_BusProxyPtr>::const_iterator i = m_busByDevId.find(devId);
+        return (i != m_busByDevId.end()) ? i->second : AJ_BusProxyPtr();
+    }
+
+    /**
+     * @brief Find bus proxy by device name.
+     * @param devName The device name.
+     * @return The bus proxy or NULL.
+     */
+    AJ_BusProxyPtr findBusProxyByDevName(const String &devName) const
+    {
+        std::map<String, AJ_BusProxyPtr>::const_iterator i = m_busByDevName.find(devName);
+        return (i != m_busByDevName.end()) ? i->second : AJ_BusProxyPtr();
+    }
 
 public:
 
