@@ -332,16 +332,51 @@ private: // devicehive::IDeviceServiceEvents
     /// @copydoc devicehive::IDeviceServiceEvents::onRegisterDevice()
     virtual void onRegisterDevice(boost::system::error_code err, devicehive::DevicePtr device)
     {
+        if (m_gw_dev != device)     // if device's changed
+            return;                 // just do nothing
+
         if (!err)
         {
-            HIVELOG_INFO_STR(m_log, "registered, subscribing for commands...");
-            m_service->asyncSubscribeForCommands(m_gw_dev, m_lastCommandTimestamp);
+            HIVELOG_INFO_STR(m_log, "registered, getting data...");
+            m_service->asyncGetDeviceData(m_gw_dev);
             m_gw_dev_registered = true;
 
             sendPendingNotifications();
         }
         else
             handleError(err, "registering device");
+    }
+
+
+    /// @copydoc devicehive::IDeviceServiceEvents::onGetDeviceData()
+    virtual void onGetDeviceData(boost::system::error_code err, devicehive::DevicePtr device)
+    {
+        if (m_gw_dev != device)     // if device's changed
+            return;                 // just do nothing
+
+        if (!err)
+        {
+            HIVELOG_INFO_STR(m_log, "got device data, subscribing for commands...");
+            m_service->asyncSubscribeForCommands(m_gw_dev, m_lastCommandTimestamp);
+
+            if (1) // watch announces
+            {
+                const json::Value j_ann = device->data["announces"];
+                for (size_t i = 0; i < j_ann.size(); ++i)
+                {
+                    const json::Value j_ifaces = j_ann[i];
+                    std::vector<String> ifaces;
+                    for (size_t j = 0; j < j_ifaces.size(); ++j)
+                        ifaces.push_back(j_ifaces[j].asString());
+                    if (j_ifaces.isString())
+                        ifaces.push_back(j_ifaces.asString());
+
+                    watchAnnounces(ifaces, true);
+                }
+            }
+        }
+        else
+            handleError(err, "getting device data");
     }
 
     std::set<const ajn::InterfaceDescription::Member*> m_watchSignals;
@@ -379,7 +414,7 @@ private: // devicehive::IDeviceServiceEvents
                     if (j_ifaces.isString())
                         ifaces.push_back(j_ifaces.asString());
 
-                    watchAnnounces(ifaces);
+                    watchAnnounces(ifaces, false);
                 }
                 else if (cmd_name == "AllJoyn/UnwatchAnnounces")
                 {
@@ -794,12 +829,78 @@ private: // AuthListener interface
 private: // ajn::services::AnnounceHandler
 
     /**
+     * @brief Compare string and JSON value.
+     */
+    static bool stringEqual(const String &a, const json::Value &b)
+    {
+        return b.isString() && a == b.asString();
+    }
+
+
+    /**
+     * @brief Insert interface list.
+     * @param ifaces Interface list to insert
+     * @return `true` if need to update device data.
+     */
+    bool _insertWatchAnnounce(const std::vector<String> &ifaces)
+    {
+        json::Value& ann_list = m_gw_dev->data["announces"];
+
+        // find existing
+        for (size_t i = 0; i < ann_list.size(); ++i)
+        {
+            json::Value const& ann = ann_list[i]; // list of interfaces
+            if ((ann.size() == ifaces.size()) && std::equal(ifaces.begin(), ifaces.end(), ann.elementsBegin(), &This::stringEqual))
+                return false; // already exists
+        }
+
+        // not found, need to insert new
+        json::Value ann(json::Value::TYPE_ARRAY);
+        for (size_t i = 0; i < ifaces.size(); ++i)
+            ann.append(ifaces[i]);
+        ann_list.append(ann);
+
+        return true; // created
+    }
+
+
+    /**
+     * @brief Remove interface list.
+     * @param ifaces Interface list to remove.
+     * @return `true` if need to update device data.
+     */
+    bool _removeWatchAnnounce(const std::vector<String> &ifaces)
+    {
+        json::Value& ann_list = m_gw_dev->data["announces"];
+
+        // find existing
+        for (size_t i = 0; i < ann_list.size(); ++i)
+        {
+            json::Value const& ann = ann_list[i]; // list of interfaces
+            if ((ann.size() == ifaces.size()) && std::equal(ifaces.begin(), ifaces.end(), ann.elementsBegin(), &This::stringEqual))
+            {
+                ann_list.remove(i);
+                return true; // deleted
+            }
+        }
+
+        return false; // nothing to remove
+    }
+
+
+    /**
      * @brief Watch for Announce signals.
      * @param ifaces The list of supported interfaces.
      *      Empty for all interfaces.
      */
-    void watchAnnounces(const std::vector<String> &ifaces)
+    void watchAnnounces(const std::vector<String> &ifaces, bool forceToWatch)
     {
+        if (!forceToWatch && !_insertWatchAnnounce(ifaces))
+            return; // already watched
+
+        if (m_service && m_gw_dev && !forceToWatch)
+            m_service->asyncUpdateDeviceData(m_gw_dev);
+
         std::vector<const char*> p(ifaces.size());
         for (size_t i = 0; i < ifaces.size(); ++i)
             p[i] = ifaces[i].c_str();
@@ -818,6 +919,12 @@ private: // ajn::services::AnnounceHandler
      */
     void unwatchAnnounces(const std::vector<String> &ifaces)
     {
+        if (!_removeWatchAnnounce(ifaces))
+            return; // doesn't exist
+
+        if (m_service && m_gw_dev)
+            m_service->asyncUpdateDeviceData(m_gw_dev);
+
         std::vector<const char*> p(ifaces.size());
         for (size_t i = 0; i < ifaces.size(); ++i)
             p[i] = ifaces[i].c_str();
