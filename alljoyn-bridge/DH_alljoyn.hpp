@@ -443,9 +443,8 @@ private: // devicehive::IDeviceServiceEvents
                 {
                     const json::Value &j_addr = cmd_params;
 
-                    AJ_BusProxyPtr pBus = getBusProxy(j_addr["bus"].asString(),
-                                                      j_addr["port"].asInt());
-                    if (!pBus) throw std::runtime_error("not bus found");
+                    AJ_BusProxyPtr pBus = getBusProxy(j_addr);
+                    if (!pBus) throw std::runtime_error("no valid address provided");
 
                     AJ_ObjProxyPtr pObj = getObjProxy(pBus, j_addr["object"].asString());
                     if (!pObj) throw std::runtime_error("no object found");
@@ -456,9 +455,8 @@ private: // devicehive::IDeviceServiceEvents
                 {
                     const json::Value &j_addr = cmd_params;
 
-                    AJ_BusProxyPtr pBus = getBusProxy(j_addr["bus"].asString(),
-                                                      j_addr["port"].asInt());
-                    if (!pBus) throw std::runtime_error("not bus found");
+                    AJ_BusProxyPtr pBus = getBusProxy(j_addr);
+                    if (!pBus) throw std::runtime_error("no valid address provided");
 
                     AJ_ObjProxyPtr pObj = getObjProxy(pBus, j_addr["object"].asString());
                     if (!pObj) throw std::runtime_error("no object found");
@@ -470,9 +468,8 @@ private: // devicehive::IDeviceServiceEvents
                 {
                     const json::Value &j_addr = cmd_params;
 
-                    AJ_BusProxyPtr pBus = getBusProxy(j_addr["bus"].asString(),
-                                                      j_addr["port"].asInt());
-                    if (!pBus) throw std::runtime_error("not bus found");
+                    AJ_BusProxyPtr pBus = getBusProxy(j_addr);
+                    if (!pBus) throw std::runtime_error("no valid address provided");
 
                     AJ_ObjProxyPtr pObj = getObjProxy(pBus, j_addr["object"].asString());
                     if (!pObj) throw std::runtime_error("no object found");
@@ -489,9 +486,8 @@ private: // devicehive::IDeviceServiceEvents
                 {
                     const json::Value &j_addr = cmd_params;
 
-                    AJ_BusProxyPtr pBus = getBusProxy(j_addr["bus"].asString(),
-                                                      j_addr["port"].asInt());
-                    if (!pBus) throw std::runtime_error("not bus found");
+                    AJ_BusProxyPtr pBus = getBusProxy(j_addr);
+                    if (!pBus) throw std::runtime_error("no valid address provided");
 
                     AJ_ObjProxyPtr pObj = getObjProxy(pBus, j_addr["object"].asString());
                     if (!pObj) throw std::runtime_error("no object found");
@@ -505,9 +501,8 @@ private: // devicehive::IDeviceServiceEvents
                 {
                     const json::Value &j_addr = cmd_params;
 
-                    AJ_BusProxyPtr pBus = getBusProxy(j_addr["bus"].asString(),
-                                                      j_addr["port"].asInt());
-                    if (!pBus) throw std::runtime_error("not bus found");
+                    AJ_BusProxyPtr pBus = getBusProxy(j_addr);
+                    if (!pBus) throw std::runtime_error("no valid address provided");
 
                     AJ_ObjProxyPtr pObj = getObjProxy(pBus, j_addr["object"].asString());
                     if (!pObj) throw std::runtime_error("no object found");
@@ -538,9 +533,8 @@ private: // devicehive::IDeviceServiceEvents
                 {
                     const json::Value &j_addr = cmd_params;
 
-                    AJ_BusProxyPtr pBus = getBusProxy(j_addr["bus"].asString(),
-                                                      j_addr["port"].asInt());
-                    if (!pBus) throw std::runtime_error("not bus found");
+                    AJ_BusProxyPtr pBus = getBusProxy(j_addr);
+                    if (!pBus) throw std::runtime_error("no valid address provided");
 
                     AJ_ObjProxyPtr pObj = getObjProxy(pBus, j_addr["object"].asString());
                     if (!pObj) throw std::runtime_error("no object found");
@@ -556,9 +550,8 @@ private: // devicehive::IDeviceServiceEvents
                 {
                     const json::Value &j_addr = cmd_params;
 
-                    AJ_BusProxyPtr pBus = getBusProxy(j_addr["bus"].asString(),
-                                                      j_addr["port"].asInt());
-                    if (!pBus) throw std::runtime_error("not bus found");
+                    AJ_BusProxyPtr pBus = getBusProxy(j_addr);
+                    if (!pBus) throw std::runtime_error("no valid address provided");
 
                     AJ_ObjProxyPtr pObj = getObjProxy(pBus, j_addr["object"].asString());
                     if (!pObj) throw std::runtime_error("no object found");
@@ -2159,6 +2152,30 @@ public:
 
 private: // remote bus list
     std::vector<AJ_BusProxyPtr> m_bus_proxies;
+
+    AJ_BusProxyPtr getBusProxy(const json::Value &addr)
+    {
+        json::Value const& id = addr["deviceId"];
+        json::Value const& name = addr["deviceName"];
+        json::Value const& bus = addr["bus"];
+        json::Value const& port = addr["port"];
+
+        AJ_BusProxyPtr pbus;
+
+        // id
+        if (!pbus && !id.isNull() && id.isConvertibleToString())
+            pbus = findBusProxyByDevId(id.asString());
+
+        // name
+        if (!pbus && !name.isNull() && name.isConvertibleToString())
+            pbus = findBusProxyByDevName(name.asString());
+
+        // bus and port
+        if (!pbus && !bus.isNull() && bus.isConvertibleToString() && !port.isNull() && port.isConvertibleToInteger())
+            pbus = getBusProxy(bus.asString(), port.asInt());
+
+        return pbus;
+    }
 
     /**
      * @brief Get remote bus by name and port.
