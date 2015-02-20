@@ -581,6 +581,23 @@ public:
 
 public:
 
+    const UUID& getUUID() const
+    {
+        return m_uuid;
+    }
+
+    UInt32 getStart() const
+    {
+        return m_start;
+    }
+
+    UInt32 getEnd() const
+    {
+        return m_end;
+    }
+
+public:
+
     String toStr() const
     {
         OStringStream oss;
@@ -629,6 +646,23 @@ public:
     {
         return m_uuid;
     }
+
+    UInt32 getHandle() const
+    {
+        return m_handle;
+    }
+
+    UInt32 getProperties() const
+    {
+        return m_properties;
+    }
+
+    UInt32 getValueHandle() const
+    {
+        return m_valueHandle;
+    }
+
+public:
 
     String toStr() const
     {
@@ -1673,6 +1707,14 @@ private:
 
     bool m_discoveredAllServices;
     log::Logger m_log;
+};
+
+
+class IPeripheralList
+{
+public:
+    virtual ~IPeripheralList() {}
+    virtual PeripheralPtr findHelper(const hive::String &device) = 0;
 };
 
 } // bluepy namespace

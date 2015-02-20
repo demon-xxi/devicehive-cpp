@@ -17,6 +17,1145 @@
 #include <bluetooth/hci.h>
 #include <bluetooth/hci_lib.h>
 
+#include <alljoyn/BusAttachment.h>
+#include <alljoyn/about/AnnounceHandler.h>
+#include <alljoyn/about/AnnouncementRegistrar.h>
+#include <alljoyn/about/AboutPropertyStoreImpl.h>
+#include <alljoyn/about/AboutServiceApi.h>
+
+namespace bluetooth
+{
+    using namespace hive;
+
+/**
+ * @brief The bluetooth Device.
+ *
+ * Supports scan method.
+ */
+class Device:
+    public boost::enable_shared_from_this<Device>,
+    private NonCopyable
+{
+protected:
+
+    /// @brief Main constructor.
+    Device(boost::asio::io_service &ios, const String &name)
+        : scan_filter_dup(0x01)
+        , scan_filter_type(0)
+        , scan_filter_old_valid(false)
+        , m_scan_active(false)
+        , m_read_active(false)
+        , m_ios(ios)
+        , m_name(name)
+        , m_dev_id(-1)
+        , m_dd(-1)
+        , m_stream(ios)
+    {
+        memset(&m_dev_addr, 0, sizeof(m_dev_addr));
+    }
+
+public:
+    typedef boost::shared_ptr<Device> SharedPtr;
+
+    /// @brief The factory method.
+    static SharedPtr create(boost::asio::io_service &ios, const String &name)
+    {
+        return SharedPtr(new Device(ios, name));
+    }
+
+public:
+
+    /// @brief Get IO service.
+    boost::asio::io_service& get_io_service()
+    {
+        return m_ios;
+    }
+
+
+    /// @brief Get bluetooth device name.
+    const String& getDeviceName() const
+    {
+        return m_name;
+    }
+
+
+    /// @brief Get device identifier.
+    int getDeviceId() const
+    {
+        return m_dev_id;
+    }
+
+
+    /// @brief Get bluetooth address as string.
+    String getDeviceAddressStr() const
+    {
+        char str[64];
+        ba2str(&m_dev_addr, str);
+        return String(str);
+    }
+
+
+    /// @brief Get device info.
+    json::Value getDeviceInfo() const
+    {
+        hci_dev_info info;
+        memset(&info, 0, sizeof(info));
+
+        if (hci_devinfo(m_dev_id, &info) < 0)
+            throw std::runtime_error("cannot get device info");
+
+        return info2json(info);
+    }
+
+
+    /// @brief Convert device info to JSON value.
+    static json::Value info2json(const hci_dev_info &info)
+    {
+        json::Value res;
+        res["id"] = (int)info.dev_id;
+        res["name"] = String(info.name);
+
+        char *flags = hci_dflagstostr(info.flags);
+        res["flags"] = boost::trim_copy(String(flags));
+        bt_free(flags);
+
+        char addr[64];
+        ba2str(&info.bdaddr, addr);
+        res["addr"] = String(addr);
+
+        return res;
+    }
+
+    /// @brief Get info for all devices.
+    static json::Value getDevicesInfo()
+    {
+        struct Aux
+        {
+            static int collect(int, int dev_id, long arg)
+            {
+                hci_dev_info info;
+                memset(&info, 0, sizeof(info));
+
+                if (hci_devinfo(dev_id, &info) < 0)
+                    throw std::runtime_error("cannot get device info");
+
+                json::Value *res = reinterpret_cast<json::Value*>(arg);
+                res->append(info2json(info));
+
+                return 0;
+            }
+        };
+
+        json::Value res(json::Value::TYPE_ARRAY);
+        hci_for_each_dev(0, Aux::collect,
+                         reinterpret_cast<long>(&res));
+        return res;
+    }
+
+public:
+    uint8_t scan_filter_dup;
+    uint8_t scan_filter_type;
+    hci_filter scan_filter_old;
+    bool scan_filter_old_valid;
+
+    /**
+     * @brief Start scan operation.
+     */
+    void scanStart(const json::Value &opts)
+    {
+        uint8_t own_type = LE_PUBLIC_ADDRESS;
+        uint8_t scan_type = 0x01;
+        uint8_t filter_policy = 0x00;
+        uint16_t interval = htobs(0x0010);
+        uint16_t window = htobs(0x0010);
+
+        const json::Value &j_dup = opts["duplicates"];
+        if (!j_dup.isNull())
+        {
+            if (j_dup.isConvertibleToInteger())
+                scan_filter_dup = (j_dup.asInt() != 0);
+            else
+            {
+                String s = j_dup.asString();
+                if (boost::iequals(s, "yes"))
+                    scan_filter_dup = 0x00;     // don't filter - has duplicates
+                else if (boost::iequals(s, "no"))
+                    scan_filter_dup = 0x01;     // filter - no duplicates
+                else
+                    throw std::runtime_error("unknown duplicates value");
+            }
+        }
+        else
+            scan_filter_dup = 0x01; // filter by default
+
+        const json::Value &j_priv = opts["privacy"];
+        if (!j_priv.isNull())
+        {
+            if (j_priv.isConvertibleToInteger())
+            {
+                if (j_priv.asInt())
+                    own_type = LE_RANDOM_ADDRESS;
+            }
+            else
+            {
+                String s = j_priv.asString();
+
+                if (boost::iequals(s, "enable") || boost::iequals(s, "enabled"))
+                    own_type = LE_RANDOM_ADDRESS;
+                else if (boost::iequals(s, "disable") || boost::iequals(s, "disabled"))
+                    ;
+                else
+                    throw std::runtime_error("unknown privacy value");
+            }
+        }
+
+        const json::Value &j_type = opts["type"];
+        if (!j_type.isNull())
+        {
+            if (j_type.isConvertibleToInteger())
+                scan_type = j_type.asUInt8();
+            else
+            {
+                String s = j_type.asString();
+
+                if (boost::iequals(s, "active"))
+                    scan_type = 0x01;
+                else if (boost::iequals(s, "passive"))
+                    scan_type = 0x00;
+                else
+                    throw std::runtime_error("unknown scan type value");
+            }
+        }
+
+        const json::Value &j_pol = opts["policy"];
+        if (!j_pol.isNull())
+        {
+            if (j_pol.isConvertibleToInteger())
+                filter_policy = j_pol.asUInt8();
+            else
+            {
+                String s = j_pol.asString();
+
+                if (boost::iequals(s, "whitelist"))
+                    filter_policy = 0x01;
+                else if (boost::iequals(s, "none"))
+                    filter_policy = 0x00;
+                else
+                    throw std::runtime_error("unknown filter policy value");
+            }
+        }
+
+//switch (opt) {
+//case 'd':
+//    filter_type = optarg[0];
+//    if (filter_type != 'g' && filter_type != 'l') {
+//        fprintf(stderr, "Unknown discovery procedure\n");
+//        exit(1);
+//    }
+
+//    interval = htobs(0x0012);
+//    window = htobs(0x0012);
+//    break;
+//}
+
+        int err = hci_le_set_scan_parameters(m_dd, scan_type, interval, window,
+                                             own_type, filter_policy, 10000);
+        if (err < 0) throw std::runtime_error("failed to set scan parameters");
+
+        err = hci_le_set_scan_enable(m_dd, 0x01, scan_filter_dup, 10000);
+        if (err < 0) throw std::runtime_error("failed to enable scan");
+        m_scan_active = true;
+
+        socklen_t len = sizeof(scan_filter_old);
+        err = getsockopt(m_dd, SOL_HCI, HCI_FILTER, &scan_filter_old, &len);
+        if (err < 0) throw std::runtime_error("failed to get filter option");
+        scan_filter_old_valid = true;
+
+        hci_filter nf;
+        hci_filter_clear(&nf);
+        hci_filter_set_ptype(HCI_EVENT_PKT, &nf);
+        hci_filter_set_event(EVT_LE_META_EVENT, &nf);
+
+        err = setsockopt(m_dd, SOL_HCI, HCI_FILTER, &nf, sizeof(nf));
+        if (err < 0) throw std::runtime_error("failed to set filter option");
+
+        m_scan_devices.clear(); // new search...
+    }
+
+
+    /**
+     * @brief Stop scan operation.
+     */
+    void scanStop()
+    {
+        if (scan_filter_old_valid) // revert filter back
+        {
+            setsockopt(m_dd, SOL_HCI, HCI_FILTER, &scan_filter_old, sizeof(scan_filter_old));
+            scan_filter_old_valid = false;
+        }
+
+        if (m_scan_active)
+        {
+            m_scan_active = false;
+            int err = hci_le_set_scan_enable(m_dd, 0x00, scan_filter_dup, 10000);
+            if (err < 0) throw std::runtime_error("failed to disable scan");
+        }
+    }
+
+public:
+    void asyncReadSome()
+    {
+        if (!m_read_active && m_stream.is_open())
+        {
+            m_read_active = true;
+            boost::asio::async_read(m_stream, m_read_buf,
+                boost::asio::transfer_at_least(1),
+                boost::bind(&Device::onReadSome, this->shared_from_this(),
+                    boost::asio::placeholders::error,
+                    boost::asio::placeholders::bytes_transferred));
+        }
+    }
+
+    void readStop()
+    {
+        if (m_read_active && m_stream.is_open())
+        {
+            m_read_active = false;
+            m_stream.cancel();
+        }
+    }
+
+    json::Value getFoundDevices() const
+    {
+        json::Value res(json::Value::TYPE_OBJECT);
+
+        std::map<String, String>::const_iterator i = m_scan_devices.begin();
+        for (; i != m_scan_devices.end(); ++i)
+        {
+            const String &MAC = i->first;
+            const String &name = i->second;
+
+            res[MAC] = name;
+        }
+
+        return res;
+    }
+
+private:
+    bool m_scan_active;
+    bool m_read_active;
+    boost::asio::streambuf m_read_buf;
+    std::map<String, String> m_scan_devices;
+
+    void onReadSome(boost::system::error_code err, size_t len)
+    {
+        m_read_active = false;
+        HIVE_UNUSED(len);
+
+//            std::cerr << "read " << len << " bytes, err:" << err << "\n";
+//            std::cerr << "dump:" << dumphex(m_read_buf.data()) << "\n";
+
+        if (!err)
+        {
+            const uint8_t *buf = boost::asio::buffer_cast<const uint8_t*>(m_read_buf.data());
+            size_t buf_len = m_read_buf.size();
+            size_t len = buf_len;
+
+            const uint8_t *ptr = buf + (1 + HCI_EVENT_HDR_SIZE);
+            len -= (1 + HCI_EVENT_HDR_SIZE);
+
+            evt_le_meta_event *meta = (evt_le_meta_event*)ptr;
+            if (meta->subevent == 0x02)
+            {
+                le_advertising_info *info = (le_advertising_info *)(meta->data + 1);
+                // TODO: if (check_report_filter(filter_type, info))
+                {
+                    char addr[64];
+                    ba2str(&info->bdaddr, addr);
+                    String name = parse_name(info->data, info->length);
+
+                    m_scan_devices[addr] = name;
+                }
+            }
+
+            m_read_buf.consume(buf_len);
+            asyncReadSome(); // continue
+        }
+    }
+
+
+    template<typename Buf>
+    static String dumphex(const Buf &buf)
+    {
+        return dump::hex(
+            boost::asio::buffers_begin(buf),
+            boost::asio::buffers_end(buf));
+    }
+
+    static String parse_name(uint8_t *eir, size_t eir_len)
+    {
+        #define EIR_NAME_SHORT              0x08  /* shortened local name */
+        #define EIR_NAME_COMPLETE           0x09  /* complete local name */
+
+        size_t offset;
+
+        offset = 0;
+        while (offset < eir_len)
+        {
+            uint8_t field_len = eir[0];
+            size_t name_len;
+
+            // Check for the end of EIR
+            if (field_len == 0)
+                break;
+
+            if (offset + field_len > eir_len)
+                break;
+
+            switch (eir[1])
+            {
+            case EIR_NAME_SHORT:
+            case EIR_NAME_COMPLETE:
+                name_len = field_len - 1;
+                return String((const char*)&eir[2], name_len);
+            }
+
+            offset += field_len + 1;
+            eir += field_len + 1;
+        }
+
+        return "(unknown)";
+    }
+
+public:
+
+    /// @brief The "open" operation callback type.
+    typedef boost::function1<void, boost::system::error_code> OpenCallback;
+
+
+    /// @brief Is device open?
+    bool is_open() const
+    {
+        return m_dd >= 0 && m_stream.is_open();
+    }
+
+
+    /// @brief Open device asynchronously.
+    void async_open(OpenCallback callback)
+    {
+        boost::system::error_code err;
+
+        if (!m_name.empty())
+            m_dev_id = hci_devid(m_name.c_str());
+        else
+            m_dev_id = hci_get_route(NULL);
+
+        if (m_dev_id >= 0)
+        {
+            if (hci_devba(m_dev_id, &m_dev_addr) >= 0)
+            {
+                m_dd = hci_open_dev(m_dev_id);
+                if (m_dd >= 0)
+                    m_stream.assign(m_dd);
+                else
+                    err = boost::system::error_code(errno, boost::system::system_category());
+            }
+            else
+                err = boost::system::error_code(errno, boost::system::system_category());
+        }
+        else
+            err = boost::system::error_code(errno, boost::system::system_category());
+
+        m_ios.post(boost::bind(callback, err));
+    }
+
+
+    /// @brief Close device.
+    void close()
+    {
+        m_stream.release();
+
+        if (m_dd >= 0)
+            hci_close_dev(m_dd);
+
+        m_dd = -1;
+        m_dev_id = -1;
+        memset(&m_dev_addr, 0,
+            sizeof(m_dev_addr));
+    }
+
+private:
+    boost::asio::io_service &m_ios;
+    String m_name;
+
+    bdaddr_t m_dev_addr; ///< @brief The BT address.
+    int m_dev_id;        ///< @brief The device identifier.
+    int m_dd;            ///< @brief The device descriptor.
+
+    boost::asio::posix::stream_descriptor m_stream;
+};
+
+/// @brief The shared pointer type.
+typedef Device::SharedPtr DevicePtr;
+
+} // bluetooth namespace
+
+
+namespace alljoyn
+{
+    using namespace hive;
+
+
+static const char* BUS_NAME = "AllJoyn-GATT";
+const int SERVICE_PORT = 777;
+
+const char *MANAGER_OBJ_PATH = "/Manager";
+const char *MANAGER_IFACE_NAME = "com.devicehive.gatt.Manager";
+const char *RAW_IFACE_NAME = "com.devicehive.gatt.RAW";
+
+
+/**
+ * @brief Check AllJoyn status code and throw an exception if it's not ER_OK.
+ */
+inline void AJ_check(QStatus status, const char *text)
+{
+    if (ER_OK != status)
+    {
+        std::ostringstream ess;
+        ess << text << ": " << QCC_StatusText(status);
+        throw std::runtime_error(ess.str());
+    }
+}
+
+
+/**
+ * @brief The manager class.
+ */
+class ManagerObj: public ajn::BusObject,
+        public boost::enable_shared_from_this<ManagerObj>
+{
+public:
+    ManagerObj(boost::asio::io_service &ios,
+               ajn::BusAttachment &bus, bluepy::IPeripheralList *plist,
+               basic_app::DelayedTaskList::SharedPtr delayed,
+               bluetooth::DevicePtr bt_dev)
+        : ajn::BusObject(MANAGER_OBJ_PATH)
+        , m_ios(ios)
+        , m_plist(plist)
+        , m_delayed(delayed)
+        , m_bt_dev(bt_dev)
+        , m_log("/alljoyn/gatt/Manager")
+    {
+        QStatus status;
+
+        if (1) // manager
+        {
+            ajn::InterfaceDescription *iface = Manager_createInterface(bus);
+            status = AddInterface(*iface, ajn::BusObject::ANNOUNCED);
+            AJ_check(status, "unable to add interface");
+            iface->Activate();
+
+            Manager_attachToInterface(iface);
+        }
+
+        if (1) // RAW
+        {
+            ajn::InterfaceDescription *iface = RAW_createInterface(bus);
+            status = AddInterface(*iface, ajn::BusObject::ANNOUNCED);
+            AJ_check(status, "unable to add interface");
+            iface->Activate();
+
+            RAW_attachToInterface(iface);
+        }
+
+        HIVELOG_TRACE(m_log, "created");
+    }
+
+    ~ManagerObj()
+    {
+        HIVELOG_TRACE(m_log, "deleted");
+    }
+
+private:
+
+    /**
+     * @brief Create Manager interface.
+     */
+    ajn::InterfaceDescription* Manager_createInterface(ajn::BusAttachment &bus)
+    {
+        QStatus status = ER_OK;
+        ajn::InterfaceDescription *iface = 0;
+
+        status = bus.CreateInterface(MANAGER_IFACE_NAME, iface, ajn::AJ_IFC_SECURITY_INHERIT);
+        AJ_check(status, "unable to create interface");
+
+        status = iface->AddMethod("createDevice", "ss", "u", "MAC,meta,result");
+        AJ_check(status, "unable to register method");
+
+        status = iface->AddMethod("deleteDevice", "s", "u", "MAC,result");
+        AJ_check(status, "unable to register method");
+
+        status = iface->AddMethod("getDeviceList", "", "as", "result");
+        AJ_check(status, "unable to register method");
+
+        return iface;
+    }
+
+    void Manager_attachToInterface(ajn::InterfaceDescription *iface)
+    {
+        QStatus status = ER_OK;
+
+        status = AddMethodHandler(iface->GetMethod("createDevice"),
+                                  (ajn::MessageReceiver::MethodHandler)&ManagerObj::do_createDevice);
+        AJ_check(status, "unable to register method handler");
+
+        status = AddMethodHandler(iface->GetMethod("deleteDevice"),
+                                  (ajn::MessageReceiver::MethodHandler)&ManagerObj::do_deleteDevice);
+        AJ_check(status, "unable to register method handler");
+
+        status = AddMethodHandler(iface->GetMethod("getDeviceList"),
+                                  (ajn::MessageReceiver::MethodHandler)&ManagerObj::do_getDeviceList);
+        AJ_check(status, "unable to register method handler");
+    }
+
+    /**
+     * @brief Create RAW interface.
+     */
+    ajn::InterfaceDescription* RAW_createInterface(ajn::BusAttachment &bus)
+    {
+        QStatus status = ER_OK;
+        ajn::InterfaceDescription *iface = 0;
+
+        status = bus.CreateInterface(RAW_IFACE_NAME, iface, ajn::AJ_IFC_SECURITY_INHERIT);
+        AJ_check(status, "unable to create interface");
+
+        status = iface->AddMethod("scanDevices", "u", "a{ss}", "timeout_ms,result");
+        AJ_check(status, "unable to register method");
+
+        status = iface->AddMethod("getServices", "s", "a(suu)", "MAC,result");
+        AJ_check(status, "unable to register method");
+
+        status = iface->AddMethod("getCharacteristics", "s", "a(suuu)", "MAC,result");
+        AJ_check(status, "unable to register method");
+
+        status = iface->AddMethod("read", "su", "s", "MAC,handle,result");
+        AJ_check(status, "unable to register method");
+
+        status = iface->AddMethod("write", "subs", "u", "MAC,handle,withResponse,value,result");
+        AJ_check(status, "unable to register method");
+
+        status = iface->AddMethod("connect", "s", "u", "MAC,result");
+        AJ_check(status, "unable to register method");
+
+        status = iface->AddMethod("disconnect", "s", "u", "MAC,result");
+        AJ_check(status, "unable to register method");
+
+        status = iface->AddMethod("status", "s", "u", "MAC,result");
+        AJ_check(status, "unable to register method");
+
+        return iface;
+    }
+
+    void RAW_attachToInterface(ajn::InterfaceDescription *iface)
+    {
+        QStatus status = ER_OK;
+
+        status = AddMethodHandler(iface->GetMethod("scanDevices"),
+                                  (ajn::MessageReceiver::MethodHandler)&ManagerObj::do_scanDevices);
+        AJ_check(status, "unable to register method handler");
+
+        status = AddMethodHandler(iface->GetMethod("getServices"),
+                                  (ajn::MessageReceiver::MethodHandler)&ManagerObj::do_getServices);
+        AJ_check(status, "unable to register method handler");
+
+        status = AddMethodHandler(iface->GetMethod("getCharacteristics"),
+                                  (ajn::MessageReceiver::MethodHandler)&ManagerObj::do_getCharacteristics);
+        AJ_check(status, "unable to register method handler");
+
+        status = AddMethodHandler(iface->GetMethod("read"),
+                                  (ajn::MessageReceiver::MethodHandler)&ManagerObj::do_read);
+        AJ_check(status, "unable to register method handler");
+
+        status = AddMethodHandler(iface->GetMethod("write"),
+                                  (ajn::MessageReceiver::MethodHandler)&ManagerObj::do_write);
+        AJ_check(status, "unable to register method handler");
+
+        // TODO: connect/disconnect/status
+    }
+
+private:
+
+    class BTDevice
+    {
+    protected:
+        BTDevice(const String &MAC)
+            : m_MAC(MAC)
+            , m_log("/bluetooth/device/" + MAC)
+        {
+            HIVELOG_TRACE(m_log, "created");
+        }
+
+    public:
+
+        ~BTDevice()
+        {
+            HIVELOG_TRACE(m_log, "deleted");
+        }
+
+
+        static boost::shared_ptr<BTDevice> create(const String &MAC)
+        {
+            return boost::shared_ptr<BTDevice>(new BTDevice(MAC));
+        }
+
+    private:
+        String m_MAC;
+        log::Logger m_log;
+    };
+
+    typedef boost::shared_ptr<BTDevice> BTDevicePtr;
+    std::map<String, BTDevicePtr> m_bt_devices;
+
+
+private:
+
+    /**
+     * @brief create device (alljoyn thread).
+     *
+     * status = createDevice(MAC, meta)
+     */
+    void do_createDevice(const ajn::InterfaceDescription::Member*, ajn::Message& message)
+    {
+        const ajn::MsgArg *args = 0;
+                 size_t No_args = 0;
+        message->GetArgs(No_args, args);
+        if (2 == No_args)
+        {
+            char *MAC_str = 0;
+            args[0].Get("s", &MAC_str);
+
+            char *meta_str = 0;
+            args[1].Get("s", &meta_str);
+
+            json::Value meta;
+            if (meta_str && *meta_str)
+                meta = json::fromStr(meta_str);
+            HIVELOG_DEBUG(m_log, "calling createDevice: MAC:\"" << MAC_str << "\" meta:\"" << meta_str << "\"");
+            m_ios.post(boost::bind(&ManagerObj::safe_createDevice, shared_from_this(),
+                                   String(MAC_str), meta, ajn::Message(message)));
+        }
+        else
+            MethodReply(message, ER_INVALID_DATA);
+    }
+
+    /*
+     * @brief create device (main thread).
+     */
+    void safe_createDevice(const String &MAC, const json::Value &meta, ajn::Message message)
+    {
+        HIVELOG_DEBUG(m_log, "createDevice: MAC:\"" << MAC << "\" meta:\"" << toStr(meta) << "\"");
+
+        unsigned int n = 0;
+        BTDevicePtr &bt = m_bt_devices[MAC];
+        if (!bt)
+        {
+            bt = BTDevice::create(MAC);
+            n += 1;
+        }
+
+        ajn::MsgArg ret_args[1];
+        ret_args[0].Set("u", n); // OK
+        MethodReply(message, ret_args, 1);
+    }
+
+
+    /**
+     * @brief delete device (alljoyn thread).
+     *
+     * status = deleteDevice(MAC)
+     */
+    void do_deleteDevice(const ajn::InterfaceDescription::Member*, ajn::Message& message)
+    {
+        const ajn::MsgArg *args = 0;
+                 size_t No_args = 0;
+        message->GetArgs(No_args, args);
+        if (1 == No_args)
+        {
+            char *MAC_str = 0;
+            args[0].Get("s", &MAC_str);
+
+            HIVELOG_DEBUG(m_log, "calling deleteDevice: MAC:\"" << MAC_str << "\"");
+            m_ios.post(boost::bind(&ManagerObj::safe_deleteDevice, shared_from_this(),
+                                   String(MAC_str), ajn::Message(message)));
+        }
+        else
+            MethodReply(message, ER_INVALID_DATA);
+    }
+
+    /**
+     * @brief delete device (main thread).
+     */
+    void safe_deleteDevice(const String &MAC, ajn::Message message)
+    {
+        HIVELOG_DEBUG(m_log, "deleteDevice: MAC:\"" << MAC << "\"");
+        // TODO: create device
+        unsigned int n = 0;
+
+        n += m_bt_devices.erase(MAC);
+
+        ajn::MsgArg ret_args[1];
+        ret_args[0].Set("u", n); // OK
+        MethodReply(message, ret_args, 1);
+    }
+
+
+    /**
+     * @brief get device list (alljoyn thread).
+     */
+    void do_getDeviceList(const ajn::InterfaceDescription::Member*, ajn::Message& message)
+    {
+        const ajn::MsgArg *args = 0;
+                 size_t No_args = 0;
+        message->GetArgs(No_args, args);
+        if (0 == No_args)
+        {
+            HIVELOG_DEBUG(m_log, "calling getDeviceList");
+            m_ios.post(boost::bind(&ManagerObj::safe_getDeviceList, shared_from_this(),
+                                   ajn::Message(message)));
+        }
+        else
+            MethodReply(message, ER_INVALID_DATA);
+    }
+
+    /**
+     * @brief get device list (main thread)
+     */
+    void safe_getDeviceList(ajn::Message message)
+    {
+        HIVELOG_DEBUG(m_log, "getDeviceList");
+
+        std::vector<const char*> c_list;
+        typedef std::map<String, BTDevicePtr>::const_iterator Iterator;
+        for (Iterator i = m_bt_devices.begin(); i != m_bt_devices.end(); ++i)
+            c_list.push_back(i->first.c_str());
+
+        ajn::MsgArg ret_args[1];
+        ret_args[0].Set("as", c_list.size(),
+            c_list.empty() ? 0 : &c_list[0]);
+        ret_args[0].Stabilize();
+
+        MethodReply(message, ret_args, 1);
+    }
+
+private:
+
+    /**
+     * @brief scanDevices (alljoyn thread).
+     */
+    void do_scanDevices(const ajn::InterfaceDescription::Member*, ajn::Message& message)
+    {
+        const ajn::MsgArg *args = 0;
+                 size_t No_args = 0;
+        message->GetArgs(No_args, args);
+        if (1 == No_args)
+        {
+            unsigned int timeout_ms = 0;
+            args[0].Get("u", &timeout_ms);
+
+            HIVELOG_DEBUG(m_log, "calling scanDevices: timeout:" << timeout_ms << "ms");
+            m_ios.post(boost::bind(&ManagerObj::safe_scanDevices, shared_from_this(),
+                                   timeout_ms, ajn::Message(message)));
+        }
+        else
+            MethodReply(message, ER_INVALID_DATA);
+    }
+
+    /**
+     * @brief scanDevices (main thread).
+     */
+    void safe_scanDevices(unsigned int timeout_ms, ajn::Message message)
+    {
+        HIVELOG_DEBUG(m_log, "starting scanDevices");
+
+        if (m_bt_dev)
+        {
+            m_bt_dev->scanStart(json::Value());
+            m_bt_dev->asyncReadSome();
+
+            // report result later
+            m_delayed->callLater(timeout_ms,
+                boost::bind(&ManagerObj::done_scanDevices,
+                    shared_from_this(), message));
+        }
+        else
+            MethodReply(message, "com.devicehive.bluetooth.NoDeviceError", "No BTLE device connected");
+    }
+
+
+    void done_scanDevices(ajn::Message message)
+    {
+        HIVELOG_DEBUG(m_log, "ending scanDevices");
+        std::vector<ajn::MsgArg> aj_list;
+
+        m_bt_dev->readStop();
+        m_bt_dev->scanStop();
+
+        json::Value list = m_bt_dev->getFoundDevices();
+        for (json::Value::MemberIterator i = list.membersBegin(); i != list.membersEnd(); ++i)
+        {
+            const String MAC = i->first;
+            const String name = i->second.asString();
+
+            ajn::MsgArg item;
+            item.Set("{ss}", MAC.c_str(), name.c_str());
+            item.Stabilize();
+
+            aj_list.push_back(item);
+        }
+
+        ajn::MsgArg ret_args[1];
+        ret_args[0].Set("a{ss}", aj_list.size(),
+                aj_list.empty() ? NULL : &aj_list[0]);
+
+        MethodReply(message, ret_args, 1);
+    }
+
+
+    /**
+     * @brief getServices (alljoyn thread).
+     */
+    void do_getServices(const ajn::InterfaceDescription::Member*, ajn::Message& message)
+    {
+        const ajn::MsgArg *args = 0;
+                 size_t No_args = 0;
+        message->GetArgs(No_args, args);
+        if (1 == No_args)
+        {
+            char *MAC_str = 0;
+            args[0].Get("s", &MAC_str);
+
+            HIVELOG_DEBUG(m_log, "calling getServices: MAC:\"" << MAC_str << "\"");
+            m_ios.post(boost::bind(&ManagerObj::safe_getServices, shared_from_this(),
+                                   String(MAC_str), ajn::Message(message)));
+        }
+        else
+            MethodReply(message, ER_INVALID_DATA);
+    }
+
+    /**
+     * @brief getServices (main thread).
+     */
+    void safe_getServices(const String &MAC, ajn::Message message)
+    {
+        bluepy::PeripheralPtr helper = m_plist->findHelper(MAC);
+        helper->services(boost::bind(&ManagerObj::done_getServices,
+            shared_from_this(), _1, _2, message));
+    }
+
+    void done_getServices(const String &status, const std::vector<bluepy::ServicePtr> &services, ajn::Message message)
+    {
+        if (status.empty())
+        {
+            std::vector<ajn::MsgArg> aj_list;
+            for (size_t i = 0; i < services.size(); ++i)
+            {
+                bluepy::ServicePtr s = services[i];
+                String uuid_str = s->getUUID().toStr();
+
+                ajn::MsgArg item;
+                item.Set("(suu)", uuid_str.c_str(),
+                         s->getStart(), s->getEnd());
+                item.Stabilize();
+
+                aj_list.push_back(item);
+            }
+
+            ajn::MsgArg ret_args[1];
+            ret_args[0].Set("a(suu)", aj_list.size(),
+                    aj_list.empty() ? NULL : &aj_list[0]);
+
+            MethodReply(message, ret_args, 1);
+        }
+        else
+            MethodReply(message, "com.devicehive.bluetooth.StatusError", status.c_str());
+    }
+
+
+    /**
+     * @brief getCharacteristics (alljoyn thread).
+     */
+    void do_getCharacteristics(const ajn::InterfaceDescription::Member*, ajn::Message& message)
+    {
+        const ajn::MsgArg *args = 0;
+                 size_t No_args = 0;
+        message->GetArgs(No_args, args);
+        if (1 == No_args)
+        {
+            char *MAC_str = 0;
+            args[0].Get("s", &MAC_str);
+
+            HIVELOG_DEBUG(m_log, "calling getCharacteristics: MAC:\"" << MAC_str << "\"");
+            m_ios.post(boost::bind(&ManagerObj::safe_getCharacteristics, shared_from_this(),
+                                   String(MAC_str), ajn::Message(message)));
+        }
+        else
+            MethodReply(message, ER_INVALID_DATA);
+    }
+
+    /**
+     * @brief getCharacteristics (main thread).
+     */
+    void safe_getCharacteristics(const String &MAC, ajn::Message message)
+    {
+        bluepy::PeripheralPtr helper = m_plist->findHelper(MAC);
+        helper->characteristics(boost::bind(&ManagerObj::done_getCharacteristics,
+            shared_from_this(), _1, _2, message));
+    }
+
+    void done_getCharacteristics(const String &status, const std::vector<bluepy::CharacteristicPtr> &chars, ajn::Message message)
+    {
+        if (status.empty())
+        {
+            std::vector<ajn::MsgArg> aj_list;
+            for (size_t i = 0; i < chars.size(); ++i)
+            {
+                bluepy::CharacteristicPtr ch = chars[i];
+                String uuid_str = ch->getUUID().toStr();
+
+                ajn::MsgArg item;
+                item.Set("(suuu)", uuid_str.c_str(),
+                         ch->getHandle(), ch->getProperties(),
+                         ch->getValueHandle());
+                item.Stabilize();
+
+                aj_list.push_back(item);
+            }
+
+            ajn::MsgArg ret_args[1];
+            ret_args[0].Set("a(suuu)", aj_list.size(),
+                    aj_list.empty() ? NULL : &aj_list[0]);
+
+            MethodReply(message, ret_args, 1);
+        }
+        else
+            MethodReply(message, "com.devicehive.bluetooth.StatusError", status.c_str());
+    }
+
+
+    /**
+     * @brief read (alljoyn thread).
+     */
+    void do_read(const ajn::InterfaceDescription::Member*, ajn::Message& message)
+    {
+        const ajn::MsgArg *args = 0;
+                 size_t No_args = 0;
+        message->GetArgs(No_args, args);
+        if (2 == No_args)
+        {
+            char *MAC_str = 0;
+            args[0].Get("s", &MAC_str);
+
+            unsigned int handle = 0;
+            args[1].Get("u", &handle);
+
+            HIVELOG_DEBUG(m_log, "calling read: MAC:\"" << MAC_str << "\", handle:" << handle);
+            m_ios.post(boost::bind(&ManagerObj::safe_read, shared_from_this(),
+                                   String(MAC_str), handle, ajn::Message(message)));
+        }
+        else
+            MethodReply(message, ER_INVALID_DATA);
+    }
+
+    /**
+     * @brief read (main thread).
+     */
+    void safe_read(const String &MAC, UInt32 handle, ajn::Message message)
+    {
+        bluepy::PeripheralPtr helper = m_plist->findHelper(MAC);
+        helper->readChar(handle, boost::bind(&ManagerObj::done_read,
+            shared_from_this(), _1, _2, message));
+    }
+
+    void done_read(const String &status, const String &value, ajn::Message message)
+    {
+        if (status.empty())
+        {
+            // TODO: convert hex to bytes!
+
+            ajn::MsgArg ret_args[1];
+            ret_args[0].Set("s", value.c_str());
+            MethodReply(message, ret_args, 1);
+        }
+        else
+            MethodReply(message, "com.devicehive.bluetooth.StatusError", status.c_str());
+    }
+
+
+    /**
+     * @brief write (alljoyn thread).
+     */\
+    void do_write(const ajn::InterfaceDescription::Member*, ajn::Message& message)
+    {
+        const ajn::MsgArg *args = 0;
+                 size_t No_args = 0;
+        message->GetArgs(No_args, args);
+        if (4 == No_args)
+        {
+            char *MAC_str = 0;
+            args[0].Get("s", &MAC_str);
+
+            unsigned int handle = 0;
+            args[1].Get("u", &handle);
+
+            bool with_resp = false;
+            args[2].Get("b", &with_resp);
+
+            char *value = 0;
+            args[3].Get("s", &value);
+
+            // TODO: convert value from bytes to hex
+            HIVELOG_DEBUG(m_log, "calling write: MAC:\"" << MAC_str << "\", handle:" << handle << " value:\"" << value << "\"");
+            m_ios.post(boost::bind(&ManagerObj::safe_write, shared_from_this(),
+                String(MAC_str), handle, with_resp, String(value), ajn::Message(message)));
+        }
+        else
+            MethodReply(message, ER_INVALID_DATA);
+    }
+
+    /**
+     * @brief write (main thread).
+     */
+    void safe_write(const String &MAC, UInt32 handle, bool withResp, const String &value, ajn::Message message)
+    {
+        bluepy::PeripheralPtr helper = m_plist->findHelper(MAC);
+        helper->writeChar(handle, value, withResp,
+            boost::bind(&ManagerObj::done_write,
+            shared_from_this(), _1, message));
+    }
+
+    void done_write(const String &status, ajn::Message message)
+    {
+        if (status.empty())
+        {
+            ajn::MsgArg ret_args[1];
+            ret_args[0].Set("u", 0); // OK
+            MethodReply(message, ret_args, 1);
+        }
+        else
+            MethodReply(message, "com.devicehive.bluetooth.StatusError", status.c_str());
+    }
+
+private:
+    boost::asio::io_service &m_ios;
+    bluepy::IPeripheralList *m_plist;
+    basic_app::DelayedTaskList::SharedPtr m_delayed;
+    bluetooth::DevicePtr m_bt_dev;
+    log::Logger m_log;
+};
+
+} // alljoyn namespace
+
+
 /// @brief The BTLE gateway example.
 namespace btle_gw
 {
@@ -40,482 +1179,16 @@ This application controls only one device connected via serial port or socket or
 */
 class Application:
     public basic_app::Application,
-    public devicehive::IDeviceServiceEvents
+    public devicehive::IDeviceServiceEvents,
+    public ajn::BusListener,
+    public bluepy::IPeripheralList,
+    public ajn::SessionPortListener
 {
     typedef basic_app::Application Base; ///< @brief The base type.
     typedef Application This; ///< @brief The type alias.
 
 public:
 
-    /// @brief Bluetooth device.
-    class BluetoothDevice:
-        public boost::enable_shared_from_this<BluetoothDevice>,
-        private hive::NonCopyable
-    {
-    protected:
-
-        /// @brief Main constructor.
-        BluetoothDevice(boost::asio::io_service &ios, const String &name)
-            : scan_filter_dup(0x01)
-            , scan_filter_type(0)
-            , scan_filter_old_valid(false)
-            , m_scan_active(false)
-            , m_read_active(false)
-            , m_ios(ios)
-            , m_name(name)
-            , m_dev_id(-1)
-            , m_dd(-1)
-            , m_stream(ios)
-        {
-            memset(&m_dev_addr, 0, sizeof(m_dev_addr));
-        }
-
-    public:
-        typedef boost::shared_ptr<BluetoothDevice> SharedPtr;
-
-        /// @brief The factory method.
-        static SharedPtr create(boost::asio::io_service &ios, const String &name)
-        {
-            return SharedPtr(new BluetoothDevice(ios, name));
-        }
-
-    public:
-
-        /// @brief Get IO service.
-        boost::asio::io_service& get_io_service()
-        {
-            return m_ios;
-        }
-
-
-        /// @brief Get bluetooth device name.
-        const String& getDeviceName() const
-        {
-            return m_name;
-        }
-
-
-        /// @brief Get device identifier.
-        int getDeviceId() const
-        {
-            return m_dev_id;
-        }
-
-
-        /// @brief Get bluetooth address as string.
-        String getDeviceAddressStr() const
-        {
-            char str[64];
-            ba2str(&m_dev_addr, str);
-            return String(str);
-        }
-
-
-        /// @brief Get device info.
-        json::Value getDeviceInfo() const
-        {
-            hci_dev_info info;
-            memset(&info, 0, sizeof(info));
-
-            if (hci_devinfo(m_dev_id, &info) < 0)
-                throw std::runtime_error("cannot get device info");
-
-            return info2json(info);
-        }
-
-
-        /// @brief Convert device info to JSON value.
-        static json::Value info2json(const hci_dev_info &info)
-        {
-            json::Value res;
-            res["id"] = (int)info.dev_id;
-            res["name"] = String(info.name);
-
-            char *flags = hci_dflagstostr(info.flags);
-            res["flags"] = boost::trim_copy(String(flags));
-            bt_free(flags);
-
-            char addr[64];
-            ba2str(&info.bdaddr, addr);
-            res["addr"] = String(addr);
-
-            return res;
-        }
-
-        /// @brief Get info for all devices.
-        static json::Value getDevicesInfo()
-        {
-            struct Aux
-            {
-                static int collect(int, int dev_id, long arg)
-                {
-                    hci_dev_info info;
-                    memset(&info, 0, sizeof(info));
-
-                    if (hci_devinfo(dev_id, &info) < 0)
-                        throw std::runtime_error("cannot get device info");
-
-                    json::Value *res = reinterpret_cast<json::Value*>(arg);
-                    res->append(info2json(info));
-
-                    return 0;
-                }
-            };
-
-            json::Value res(json::Value::TYPE_ARRAY);
-            hci_for_each_dev(0, Aux::collect,
-                             reinterpret_cast<long>(&res));
-            return res;
-        }
-
-    public:
-        uint8_t scan_filter_dup;
-        uint8_t scan_filter_type;
-        hci_filter scan_filter_old;
-        bool scan_filter_old_valid;
-
-        /**
-         * @brief Start scan operation.
-         */
-        void scanStart(const json::Value &opts)
-        {
-            uint8_t own_type = LE_PUBLIC_ADDRESS;
-            uint8_t scan_type = 0x01;
-            uint8_t filter_policy = 0x00;
-            uint16_t interval = htobs(0x0010);
-            uint16_t window = htobs(0x0010);
-
-            const json::Value &j_dup = opts["duplicates"];
-            if (!j_dup.isNull())
-            {
-                if (j_dup.isConvertibleToInteger())
-                    scan_filter_dup = (j_dup.asInt() != 0);
-                else
-                {
-                    String s = j_dup.asString();
-                    if (boost::iequals(s, "yes"))
-                        scan_filter_dup = 0x00;     // don't filter - has duplicates
-                    else if (boost::iequals(s, "no"))
-                        scan_filter_dup = 0x01;     // filter - no duplicates
-                    else
-                        throw std::runtime_error("unknown duplicates value");
-                }
-            }
-            else
-                scan_filter_dup = 0x01; // filter by default
-
-            const json::Value &j_priv = opts["privacy"];
-            if (!j_priv.isNull())
-            {
-                if (j_priv.isConvertibleToInteger())
-                {
-                    if (j_priv.asInt())
-                        own_type = LE_RANDOM_ADDRESS;
-                }
-                else
-                {
-                    String s = j_priv.asString();
-
-                    if (boost::iequals(s, "enable") || boost::iequals(s, "enabled"))
-                        own_type = LE_RANDOM_ADDRESS;
-                    else if (boost::iequals(s, "disable") || boost::iequals(s, "disabled"))
-                        ;
-                    else
-                        throw std::runtime_error("unknown privacy value");
-                }
-            }
-
-            const json::Value &j_type = opts["type"];
-            if (!j_type.isNull())
-            {
-                if (j_type.isConvertibleToInteger())
-                    scan_type = j_type.asUInt8();
-                else
-                {
-                    String s = j_type.asString();
-
-                    if (boost::iequals(s, "active"))
-                        scan_type = 0x01;
-                    else if (boost::iequals(s, "passive"))
-                        scan_type = 0x00;
-                    else
-                        throw std::runtime_error("unknown scan type value");
-                }
-            }
-
-            const json::Value &j_pol = opts["policy"];
-            if (!j_pol.isNull())
-            {
-                if (j_pol.isConvertibleToInteger())
-                    filter_policy = j_pol.asUInt8();
-                else
-                {
-                    String s = j_pol.asString();
-
-                    if (boost::iequals(s, "whitelist"))
-                        filter_policy = 0x01;
-                    else if (boost::iequals(s, "none"))
-                        filter_policy = 0x00;
-                    else
-                        throw std::runtime_error("unknown filter policy value");
-                }
-            }
-
-//switch (opt) {
-//case 'd':
-//    filter_type = optarg[0];
-//    if (filter_type != 'g' && filter_type != 'l') {
-//        fprintf(stderr, "Unknown discovery procedure\n");
-//        exit(1);
-//    }
-
-//    interval = htobs(0x0012);
-//    window = htobs(0x0012);
-//    break;
-//}
-
-            int err = hci_le_set_scan_parameters(m_dd, scan_type, interval, window,
-                                                 own_type, filter_policy, 10000);
-            if (err < 0) throw std::runtime_error("failed to set scan parameters");
-
-            err = hci_le_set_scan_enable(m_dd, 0x01, scan_filter_dup, 10000);
-            if (err < 0) throw std::runtime_error("failed to enable scan");
-            m_scan_active = true;
-
-            socklen_t len = sizeof(scan_filter_old);
-            err = getsockopt(m_dd, SOL_HCI, HCI_FILTER, &scan_filter_old, &len);
-            if (err < 0) throw std::runtime_error("failed to get filter option");
-            scan_filter_old_valid = true;
-
-            hci_filter nf;
-            hci_filter_clear(&nf);
-            hci_filter_set_ptype(HCI_EVENT_PKT, &nf);
-            hci_filter_set_event(EVT_LE_META_EVENT, &nf);
-
-            err = setsockopt(m_dd, SOL_HCI, HCI_FILTER, &nf, sizeof(nf));
-            if (err < 0) throw std::runtime_error("failed to set filter option");
-
-            m_scan_devices.clear(); // new search...
-        }
-
-
-        /**
-         * @brief Stop scan operation.
-         */
-        void scanStop()
-        {
-            if (scan_filter_old_valid) // revert filter back
-            {
-                setsockopt(m_dd, SOL_HCI, HCI_FILTER, &scan_filter_old, sizeof(scan_filter_old));
-                scan_filter_old_valid = false;
-            }
-
-            if (m_scan_active)
-            {
-                m_scan_active = false;
-                int err = hci_le_set_scan_enable(m_dd, 0x00, scan_filter_dup, 10000);
-                if (err < 0) throw std::runtime_error("failed to disable scan");
-            }
-        }
-
-    public:
-        void asyncReadSome()
-        {
-            if (!m_read_active && m_stream.is_open())
-            {
-                m_read_active = true;
-                boost::asio::async_read(m_stream, m_read_buf,
-                    boost::asio::transfer_at_least(1),
-                    boost::bind(&BluetoothDevice::onReadSome, this->shared_from_this(),
-                        boost::asio::placeholders::error,
-                        boost::asio::placeholders::bytes_transferred));
-            }
-        }
-
-        void readStop()
-        {
-            if (m_read_active && m_stream.is_open())
-            {
-                m_read_active = false;
-                m_stream.cancel();
-            }
-        }
-
-        json::Value getFoundDevices() const
-        {
-            json::Value res(json::Value::TYPE_OBJECT);
-
-            std::map<String, String>::const_iterator i = m_scan_devices.begin();
-            for (; i != m_scan_devices.end(); ++i)
-            {
-                const String &MAC = i->first;
-                const String &name = i->second;
-
-                res[MAC] = name;
-            }
-
-            return res;
-        }
-
-    private:
-        bool m_scan_active;
-        bool m_read_active;
-        boost::asio::streambuf m_read_buf;
-        std::map<String, String> m_scan_devices;
-
-        void onReadSome(boost::system::error_code err, size_t len)
-        {
-            m_read_active = false;
-            HIVE_UNUSED(len);
-
-//            std::cerr << "read " << len << " bytes, err:" << err << "\n";
-//            std::cerr << "dump:" << dumphex(m_read_buf.data()) << "\n";
-
-            if (!err)
-            {
-                const uint8_t *buf = boost::asio::buffer_cast<const uint8_t*>(m_read_buf.data());
-                size_t buf_len = m_read_buf.size();
-                size_t len = buf_len;
-
-                const uint8_t *ptr = buf + (1 + HCI_EVENT_HDR_SIZE);
-                len -= (1 + HCI_EVENT_HDR_SIZE);
-
-                evt_le_meta_event *meta = (evt_le_meta_event*)ptr;
-                if (meta->subevent == 0x02)
-                {
-                    le_advertising_info *info = (le_advertising_info *)(meta->data + 1);
-                    // TODO: if (check_report_filter(filter_type, info))
-                    {
-                        char addr[64];
-                        ba2str(&info->bdaddr, addr);
-                        String name = parse_name(info->data, info->length);
-
-                        m_scan_devices[addr] = name;
-                    }
-                }
-
-                m_read_buf.consume(buf_len);
-                asyncReadSome(); // continue
-            }
-        }
-
-
-        template<typename Buf>
-        static String dumphex(const Buf &buf)
-        {
-            return dump::hex(
-                boost::asio::buffers_begin(buf),
-                boost::asio::buffers_end(buf));
-        }
-
-        static String parse_name(uint8_t *eir, size_t eir_len)
-        {
-            #define EIR_NAME_SHORT              0x08  /* shortened local name */
-            #define EIR_NAME_COMPLETE           0x09  /* complete local name */
-
-            size_t offset;
-
-            offset = 0;
-            while (offset < eir_len)
-            {
-                uint8_t field_len = eir[0];
-                size_t name_len;
-
-                // Check for the end of EIR
-                if (field_len == 0)
-                    break;
-
-                if (offset + field_len > eir_len)
-                    break;
-
-                switch (eir[1])
-                {
-                case EIR_NAME_SHORT:
-                case EIR_NAME_COMPLETE:
-                    name_len = field_len - 1;
-                    return String((const char*)&eir[2], name_len);
-                }
-
-                offset += field_len + 1;
-                eir += field_len + 1;
-            }
-
-            return "(unknown)";
-        }
-
-    public:
-
-
-    public:
-
-        /// @brief The "open" operation callback type.
-        typedef boost::function1<void, boost::system::error_code> OpenCallback;
-
-
-        /// @brief Is device open?
-        bool is_open() const
-        {
-            return m_dd >= 0 && m_stream.is_open();
-        }
-
-
-        /// @brief Open device asynchronously.
-        void async_open(OpenCallback callback)
-        {
-            boost::system::error_code err;
-
-            if (!m_name.empty())
-                m_dev_id = hci_devid(m_name.c_str());
-            else
-                m_dev_id = hci_get_route(NULL);
-
-            if (m_dev_id >= 0)
-            {
-                if (hci_devba(m_dev_id, &m_dev_addr) >= 0)
-                {
-                    m_dd = hci_open_dev(m_dev_id);
-                    if (m_dd >= 0)
-                        m_stream.assign(m_dd);
-                    else
-                        err = boost::system::error_code(errno, boost::system::system_category());
-                }
-                else
-                    err = boost::system::error_code(errno, boost::system::system_category());
-            }
-            else
-                err = boost::system::error_code(errno, boost::system::system_category());
-
-            m_ios.post(boost::bind(callback, err));
-        }
-
-
-        /// @brief Close device.
-        void close()
-        {
-            m_stream.release();
-
-            if (m_dd >= 0)
-                hci_close_dev(m_dd);
-
-            m_dd = -1;
-            m_dev_id = -1;
-            memset(&m_dev_addr, 0,
-                sizeof(m_dev_addr));
-        }
-
-    private:
-        boost::asio::io_service &m_ios;
-        String m_name;
-
-        bdaddr_t m_dev_addr; ///< @brief The BT address.
-        int m_dev_id;        ///< @brief The device identifier.
-        int m_dd;            ///< @brief The device descriptor.
-
-        boost::asio::posix::stream_descriptor m_stream;
-    };
-
-    /// @brief The shared pointer type.
-    typedef BluetoothDevice::SharedPtr BluetoothDevicePtr;
 
 protected:
 
@@ -613,7 +1286,7 @@ public:
         if (pthis->m_helperPath.empty())
             throw std::runtime_error("no helper provided");
 
-        pthis->m_bluetooth = BluetoothDevice::create(pthis->m_ios, bluetoothName);
+        pthis->m_bluetooth = bluetooth::Device::create(pthis->m_ios, bluetoothName);
         pthis->m_network = devicehive::Network::create(networkName, networkKey, networkDesc);
         pthis->m_device = devicehive::Device::create(deviceId, deviceName, deviceKey,
             devicehive::Device::Class::create("BTLE gateway", "0.1", false, DEVICE_OFFLINE_TIMEOUT),
@@ -630,7 +1303,7 @@ public:
                 if (pthis->m_disableWebsockets)
                     throw std::runtime_error("websockets are disabled by --no-ws switch");
 
-                HIVELOG_INFO_STR(pthis->m_log, "WebSocket service is used");
+                HIVELOG_INFO(pthis->m_log, "WebSocket service is used: " << baseUrl);
                 devicehive::WebsocketService::SharedPtr service = devicehive::WebsocketService::create(
                     http::Client::create(pthis->m_ios), baseUrl, pthis);
                 service->setPingPongEnabled(!pthis->m_disableWebsocketPingPong);
@@ -641,7 +1314,7 @@ public:
             }
             else
             {
-                HIVELOG_INFO_STR(pthis->m_log, "RESTful service is used");
+                HIVELOG_INFO(pthis->m_log, "RESTful service is used: " << baseUrl);
                 devicehive::RestfulService::SharedPtr service = devicehive::RestfulService::create(
                     http::Client::create(pthis->m_ios), baseUrl, pthis);
                 if (0 < web_timeout)
@@ -685,6 +1358,8 @@ protected:
         m_delayed->callLater( // ASAP
             boost::bind(&This::tryToOpenBluetoothDevice,
                 shared_from_this()));
+
+        AJ_init();
     }
 
 
@@ -761,7 +1436,7 @@ private:
 
 private: // IDeviceServiceEvents
 
-    /// @copydoc devicehive::IDeviceServiceEvents::onConnected()
+    /// @copydoc deviceIDeviceServiceEvents::onConnected()
     virtual void onConnected(ErrorCode err)
     {
         HIVELOG_TRACE_BLOCK(m_log, "onConnected()");
@@ -776,7 +1451,7 @@ private: // IDeviceServiceEvents
     }
 
 
-    /// @copydoc devicehive::IDeviceServiceEvents::onServerInfo()
+    /// @copydoc deviceIDeviceServiceEvents::onServerInfo()
     virtual void onServerInfo(boost::system::error_code err, devicehive::ServerInfo info)
     {
         if (!err)
@@ -811,7 +1486,7 @@ private: // IDeviceServiceEvents
     }
 
 
-    /// @copydoc devicehive::IDeviceServiceEvents::onRegisterDevice()
+    /// @copydoc deviceIDeviceServiceEvents::onRegisterDevice()
     virtual void onRegisterDevice(boost::system::error_code err, devicehive::DevicePtr device)
     {
         if (m_device != device)     // if device's changed
@@ -829,7 +1504,7 @@ private: // IDeviceServiceEvents
     }
 
 
-    /// @copydoc devicehive::IDeviceServiceEvents::onInsertCommand()
+    /// @copydoc deviceIDeviceServiceEvents::onInsertCommand()
     virtual void onInsertCommand(ErrorCode err, devicehive::DevicePtr device, devicehive::CommandPtr command)
     {
         if (m_device != device)     // if device's changed
@@ -870,7 +1545,7 @@ private:
         if (boost::iequals(command->name, "Hello"))
             command->result = "Good to see you!";
         else if (boost::iequals(command->name, "devices"))
-            command->result = BluetoothDevice::getDevicesInfo();
+            command->result = bluetooth::Device::getDevicesInfo();
         else if (boost::iequals(command->name, "info"))
         {
             if (!m_bluetooth || !m_bluetooth->is_open())
@@ -1856,8 +2531,167 @@ private:
     }
 
 private:
+
+    void AJ_init()
+    {
+        using namespace alljoyn;
+
+        //HIVELOG_TRACE(m_log_AJ, "creating BusAttachment");
+        m_AJ_bus.reset(new ajn::BusAttachment(BUS_NAME, true));
+
+        //HIVELOG_TRACE(m_log_AJ, "register bus listener");
+        m_AJ_bus->RegisterBusListener(*this);
+        QStatus status = m_AJ_bus->Start();
+        AJ_check(status, "failed to start AllJoyn bus");
+
+        // connect
+        //HIVELOG_TRACE(m_log_AJ, "connecting");
+        status = m_AJ_bus->Connect();
+        AJ_check(status, "failed to connect AllJoyn bus");
+        HIVELOG_INFO(m_log, "connected to BUS: \"" << m_AJ_bus->GetUniqueName().c_str() << "\"");
+
+        m_AJ_bus->RegisterBusListener(*this);
+
+        if (1) // initialize manager object
+        {
+            QStatus status;
+            m_AJ_mngr.reset(new ManagerObj(m_ios, *m_AJ_bus, this, m_delayed, m_bluetooth));
+
+            status = m_AJ_bus->RegisterBusObject(*m_AJ_mngr);
+            AJ_check(status, "unable to register manager object");
+        }
+
+        ajn::services::AboutPropertyStoreImpl* props = new ajn::services::AboutPropertyStoreImpl();
+        AJ_fillAbout(props);
+
+        ajn::services::AboutServiceApi::Init(*m_AJ_bus, *props);
+        if (!ajn::services::AboutServiceApi::getInstance())
+            throw std::runtime_error("cannot create about service");
+
+        status = ajn::services::AboutServiceApi::getInstance()->Register(SERVICE_PORT);
+        AJ_check(status, "failed to register about service");
+
+        status = m_AJ_bus->RegisterBusObject(*ajn::services::AboutServiceApi::getInstance());
+        AJ_check(status, "failed to register about bus object");
+
+        std::vector<qcc::String> interfaces;
+        interfaces.push_back(MANAGER_IFACE_NAME);
+        interfaces.push_back(RAW_IFACE_NAME);
+        status = ajn::services::AboutServiceApi::getInstance()->AddObjectDescription(MANAGER_OBJ_PATH, interfaces);
+        AJ_check(status, "failed to add object description");
+
+
+        ajn::SessionOpts opts(ajn::SessionOpts::TRAFFIC_MESSAGES, true, ajn::SessionOpts::PROXIMITY_ANY, ajn::TRANSPORT_ANY);
+        ajn::SessionPort sp = SERVICE_PORT;
+        status = m_AJ_bus->BindSessionPort(sp, opts, *this);
+        AJ_check(status, "unable to bind service port");
+
+        status = m_AJ_bus->AdvertiseName(m_AJ_bus->GetUniqueName().c_str(), ajn::TRANSPORT_ANY);
+        AJ_check(status, "unable to advertise name");
+
+        status = ajn::services::AboutServiceApi::getInstance()->Announce();
+        AJ_check(status, "unable to announce");
+    }
+
+
+    void AJ_fillAbout(ajn::services::AboutPropertyStoreImpl *props)
+    {
+        props->setDeviceId("58b02520-b101-11e4-ab27-0800200c9a66");
+        props->setAppId("620b7840-b101-11e4-ab27-0800200c9a66");
+
+        std::vector<qcc::String> languages(1);
+        languages[0] = "en";
+        props->setSupportedLangs(languages);
+        props->setDefaultLang("en");
+
+        props->setAppName("Manager Obj", "en");
+        props->setModelNumber("N/A");
+        props->setDateOfManufacture("1999-01-01");
+        props->setSoftwareVersion("0.0.0 build 1");
+        props->setAjSoftwareVersion(ajn::GetVersion());
+        props->setHardwareVersion("1.0a");
+
+        props->setDeviceName("BLE gateway", "en");
+        props->setDescription("This is an Alljoyn to BLE gateway", "en");
+        props->setManufacturer("DataArt", "en");
+
+        props->setSupportUrl("http://www.devicehive.com");
+    }
+
+private: // ajn::BusListener implementation
+
+    virtual void ListenerRegistered(ajn::BusAttachment *bus)
+    {
+        HIVELOG_DEBUG(m_log, "listener registered for: \"" << bus->GetUniqueName().c_str() << "\"");
+    }
+
+    virtual void ListenerUnregistered()
+    {
+        HIVELOG_DEBUG(m_log, "listener unregistered");
+    }
+
+    virtual void FoundAdvertisedName(const char* name, ajn::TransportMask transport, const char* namePrefix)
+    {
+        HIVELOG_DEBUG(m_log, "found advertized name: \"" << name << "\", prefix: \"" << namePrefix << "\"");
+    }
+
+    virtual void LostAdvertisedName(const char* name, ajn::TransportMask transport, const char* namePrefix)
+    {
+        HIVELOG_DEBUG(m_log, "lost advertized name: \"" << name << "\", prefix: \"" << namePrefix << "\"");
+    }
+
+    virtual void NameOwnerChanged(const char* busName, const char* previousOwner, const char* newOwner)
+    {
+        HIVELOG_DEBUG(m_log, "name owner changed, bus name: \"" << (busName?busName:"<null>")
+                  << "\", from: \"" << (previousOwner?previousOwner:"<null>")
+                  << "\", to: \"" << (newOwner?newOwner:"<null>")
+                  << "\"");
+    }
+
+    virtual void PropertyChanged(const char* propName, const ajn::MsgArg* propValue)
+    {
+        HIVELOG_DEBUG(m_log, "property changed, name: \"" << propName << "\"");
+    }
+
+    virtual void BusStopping()
+    {
+        HIVELOG_DEBUG(m_log, "bus stopping");
+    }
+
+    virtual void BusDisconnected()
+    {
+        HIVELOG_DEBUG(m_log, "bus disconnected");
+    }
+
+private: // SessionPortListener
+
+    virtual bool AcceptSessionJoiner(ajn::SessionPort sessionPort, const char* joiner, const ajn::SessionOpts& opts)
+    {
+        if (sessionPort != alljoyn::SERVICE_PORT)
+        {
+            HIVELOG_WARN(m_log, "rejecting join attempt on unexpected session port " << sessionPort);
+            return false;
+        }
+
+        HIVELOG_INFO(m_log, "accepting join attempt from \"" << joiner << "\"");
+        return true;
+    }
+
+    virtual void SessionJoined(ajn::SessionPort sessionPort, ajn::SessionId id, const char* joiner)
+    {
+        HIVELOG_INFO(m_log, "session #" << id << " joined on "
+                  << sessionPort << " port (joiner: \""
+                    << joiner << "\")");
+    }
+
+
+private:
+    boost::shared_ptr<ajn::BusAttachment> m_AJ_bus;
+    boost::shared_ptr<alljoyn::ManagerObj> m_AJ_mngr;
+
+private:
     String m_helperPath; ///< @brief The helper path.
-    BluetoothDevicePtr m_bluetooth;  ///< @brief The bluetooth device.
+    bluetooth::DevicePtr m_bluetooth;  ///< @brief The bluetooth device.
 
     devicehive::CommandPtr m_pendingScanCmd;
     basic_app::DelayedTask::SharedPtr m_pendingScanCmdTimeout;
@@ -1906,13 +2740,14 @@ Creates the Application instance and calls its Application::run() method.
 inline void main(int argc, const char* argv[])
 {
     { // configure logging
-        using namespace hive::log;
+        using namespace log;
 
         Target::File::SharedPtr file = Target::File::create(getLogFileName(argc, argv));
         file->setAutoFlushLevel(LEVEL_TRACE)
              .setMaxFileSize(1*1024*1024)
              .setNumberOfBackups(1)
              .startNew();
+        file->setFormat(Format::create("%T [%I] %N %L %M\n"));
 
         Target::SharedPtr console = Logger::root().getTarget();
         console->setFormat(Format::create("%N: %M\n"))
