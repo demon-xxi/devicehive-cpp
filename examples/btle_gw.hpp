@@ -685,11 +685,18 @@ private:
 
 private:
 
-    class BTDevice
+    class BTDevice: public ajn::BusObject,
+            public boost::enable_shared_from_this<BTDevice>
     {
     protected:
-        BTDevice(const String &MAC)
-            : m_MAC(MAC)
+        BTDevice(const String &MAC, const String &objPath, bluepy::PeripheralPtr helper, const json::Value &meta)
+            : ajn::BusObject(objPath.c_str())
+            , m_ios(helper->getIoService())
+            , m_MAC(MAC)
+            , m_meta(meta)
+            , m_helper(helper)
+            , m_active_req(0)
+            , m_AJ_bus(0)
             , m_log("/bluetooth/device/" + MAC)
         {
             HIVELOG_TRACE(m_log, "created");
@@ -703,13 +710,820 @@ private:
         }
 
 
-        static boost::shared_ptr<BTDevice> create(const String &MAC)
+        static boost::shared_ptr<BTDevice> create(const String &MAC, const String &objPath,
+                                                  bluepy::PeripheralPtr helper,
+                                                  const json::Value &meta = json::Value())
         {
-            return boost::shared_ptr<BTDevice>(new BTDevice(MAC));
+            return boost::shared_ptr<BTDevice>(new BTDevice(MAC, objPath, helper, meta));
+        }
+
+    public:
+
+        void inspect()
+        {
+            HIVELOG_INFO(m_log, "inspecting...");
+
+            m_helper->services(boost::bind(&BTDevice::on_services,
+                        shared_from_this(), _1, _2));
+        }
+
+        void registerWhenInsected(ajn::BusAttachment &bus)
+        {
+            m_AJ_bus = &bus;
         }
 
     private:
+
+        void on_services(const String &status, const std::vector<bluepy::ServicePtr> &services)
+        {
+            if (status.empty()) // OK
+            {
+                HIVELOG_INFO(m_log, "got " << services.size() << " services");
+
+                m_services = services;
+                m_helper->characteristics(boost::bind(&BTDevice::on_chars,
+                            shared_from_this(), _1, _2));
+            }
+            else
+                HIVELOG_ERROR(m_log, "failed to get services: " << status);
+        }
+
+        void on_chars(const String &status, const std::vector<bluepy::CharacteristicPtr> &chars)
+        {
+            if (status.empty()) // OK
+            {
+                HIVELOG_INFO(m_log, "got " << chars.size() << " characteristics");
+
+                m_chars = chars;
+                do_check_meta();
+            }
+            else
+                HIVELOG_ERROR(m_log, "failed to get characteristics: " << status);
+        }
+
+        void on_desc(const String &status, const std::vector<bluepy::DescriptorPtr> &desc)
+        {
+            m_active_req -= 1;
+            if (status.empty()) // OK
+            {
+                HIVELOG_DEBUG(m_log, "got " << desc.size() << " descriptors");
+
+                for (size_t i = 0; i < desc.size(); ++i)
+                {
+                    bluepy::DescriptorPtr d = desc[i];
+
+                    if (d->getUUID() == bluepy::UUID(0x2901)) // CharacteristicUserDescription
+                    {
+                        // get characteristic name
+                        if (bluepy::CharacteristicPtr c = findNearestChar(d->getHandle()))
+                        {
+                            m_helper->readChar(d->getHandle(), boost::bind(&BTDevice::on_read_user_desc,
+                                        shared_from_this(), _1, _2, c));
+                            m_active_req += 1;
+                        }
+                    }
+                    else if (d->getUUID() == bluepy::UUID(0x2902)) // ClientCharacteristicConfiguration
+                    {
+                        if (bluepy::CharacteristicPtr c = findNearestChar(d->getHandle()))
+                            c->clientConfig = d->getHandle();
+                    }
+                }
+            }
+            else
+                HIVELOG_ERROR(m_log, "failed to get descriptor: " << status);
+
+            if (m_active_req == 0)
+                do_build_meta();
+        }
+
+
+        void on_read_user_desc(const String &status, const String &value, bluepy::CharacteristicPtr ch)
+        {
+            m_active_req -= 1;
+            if (status.empty()) // OK
+            {
+                ch->userDesc = hex2bytes(value);
+            }
+            else
+                HIVELOG_ERROR(m_log, "failed to get user descriptor: " << status);
+
+            if (m_active_req == 0)
+                do_build_meta();
+        }
+
+
+        void do_check_meta()
+        {
+            for (size_t i = 0; i < m_services.size(); ++i)
+            {
+                bluepy::ServicePtr s = m_services[i];
+
+                std::set<int> att_map;
+
+                for (size_t i = 0; i < m_chars.size(); ++i)
+                {
+                    bluepy::CharacteristicPtr c = m_chars[i];
+                    if (s->getStart() <= c->getHandle()
+                     && c->getHandle() <= s->getEnd())
+                    {
+                        att_map.insert(c->getHandle());
+                        att_map.insert(c->getValueHandle());
+                    }
+                }
+
+
+                HIVELOG_INFO(m_log, "checking [" << s->getStart() << ", " << s->getEnd() << "] attribute range");
+                size_t s_end = s->getEnd();
+                if (s_end == 0xFFFF)
+                {
+                    int n = m_meta.get("maximumAttribute", 0).asInt();
+                    if (0 < n && n < 0xFFFF)
+                        s_end = n;
+                    else if (!m_chars.empty())
+                        s_end = m_chars.back()->getValueHandle() + 2; // TODO: fix this!!!
+                }
+                for (size_t i = s->getStart(); i <= s_end; ++i)
+                {
+                    // request information about missing attributes
+                    if (att_map.find(i) == att_map.end())
+                    {
+                        //HIVELOG_INFO(m_log, "getting " << i << " attribute description");
+                        m_helper->descriptors(boost::bind(&BTDevice::on_desc,
+                                    shared_from_this(), _1, _2), i, i);
+                        m_active_req += 1;
+                    }
+                }
+            }
+        }
+
+        void do_build_meta()
+        {
+            String prefix = m_meta["objectPrefix"].asString();
+            if (prefix.empty()) prefix = simplify(m_MAC);
+
+            std::vector<qcc::String> interfaces;
+
+            for (size_t i = 0; i < m_services.size(); ++i)
+            {
+                bluepy::ServicePtr s = m_services[i];
+
+                String service_name = ifaceNameFromUUID(s->getUUID());
+                String iface_name = "com.devicehive.gatt.device." + prefix + "." + service_name;
+
+                ajn::InterfaceDescription *iface = 0;
+                if (m_AJ_bus)
+                {
+                    m_AJ_bus->CreateInterface(iface_name.c_str(), iface, ajn::AJ_IFC_SECURITY_INHERIT);
+                    // TODO: check error
+
+                    interfaces.push_back(iface_name.c_str());
+                }
+
+                json::Value js;
+                js["name"] = service_name;
+
+                for (size_t i = 0; i < m_chars.size(); ++i)
+                {
+                    bluepy::CharacteristicPtr c = m_chars[i];
+                    if (s->getStart() <= c->getHandle()
+                     && c->getHandle() <= s->getEnd())
+                    {
+                        String char_name = charNameFromUUID(c->getUUID(), c->userDesc);
+                        String char_type = charTypeFromHandle(c->getValueHandle());
+
+                        if (iface)
+                        {
+                            uint8_t aj_prop = 0;
+                            if (c->getProperties()&PROP_READ)
+                                aj_prop |= ajn::PROP_ACCESS_READ;
+                            if (c->getProperties()&(PROP_WRITE|PROP_WRITE_woR))
+                                aj_prop |= ajn::PROP_ACCESS_WRITE;
+
+                            iface->AddProperty(char_name.c_str(),
+                                               AJ_type(char_type).c_str(),
+                                               aj_prop);
+
+                            //iface->AddPropertyAnnotation()
+                            // TODO: add notification
+                        }
+
+                        m_prop_info[iface_name][char_name] = c;
+
+                        json::Value jc;
+                        jc["name"] = char_name;
+                        if (c->clientConfig != 0)
+                            jc["_config"] = c->clientConfig;
+                        jc["access"] = accessFromProperties(c->getProperties());
+                        jc["_value"] = c->getValueHandle();
+
+                        js["properties"].append(jc);
+                    }
+                }
+
+                if (iface) // activate interface
+                {
+                    AddInterface(*iface, ajn::BusObject::ANNOUNCED);
+                    iface->Activate();
+                }
+
+                std::cerr << json::toStrH(js);
+            }
+
+            if (ajn::services::AboutServiceApi* about = ajn::services::AboutServiceApi::getInstance())
+            {
+                about->AddObjectDescription(GetPath(), interfaces);
+                about->Announce();
+            }
+            if (m_AJ_bus)
+                m_AJ_bus->RegisterBusObject(*this);
+            m_interfaces = interfaces;
+        }
+
+
+    public:
+        std::vector<qcc::String> getAllInterfaces() const
+        {
+            return m_interfaces;
+        }
+    private:
+        std::vector<qcc::String> m_interfaces;
+
+        // [interface name][property name] => characteristic
+        std::map<String, std::map<String, bluepy::CharacteristicPtr> > m_prop_info;
+
+        bluepy::CharacteristicPtr findProp(const String &ifaceName, const String &propName) const
+        {
+            std::map<String, std::map<String, bluepy::CharacteristicPtr> >::const_iterator i = m_prop_info.find(ifaceName);
+            if (i != m_prop_info.end())
+            {
+                std::map<String, bluepy::CharacteristicPtr>::const_iterator p = i->second.find(propName);
+                if (p != i->second.end())
+                    return p->second;
+            }
+
+            return bluepy::CharacteristicPtr();
+        }
+
+
+        String AJ_type(const String &type)
+        {
+            if (boost::iequals(type, "hex"))
+                return "s";
+
+            else if (boost::iequals(type, "u8"))
+                return "y";
+            else if (boost::iequals(type, "u16"))
+                return "q";
+            else if (boost::iequals(type, "i16"))
+                return "n";
+            else if (boost::iequals(type, "u32"))
+                return "u";
+            else if (boost::iequals(type, "i32"))
+                return "i";
+            else if (boost::iequals(type, "u64"))
+                return "t";
+            else if (boost::iequals(type, "i64"))
+                return "x";
+            else if (boost::iequals(type, "d"))
+                return "d";
+            else if (boost::iequals(type, "s"))
+                return "s";
+            else if (boost::iequals(type, "b"))
+                return "b";
+
+            else if (boost::iequals(type, "au8"))
+                return "ay";
+            else if (boost::iequals(type, "au16"))
+                return "aq";
+            else if (boost::iequals(type, "ai16"))
+                return "an";
+            else if (boost::iequals(type, "au32"))
+                return "au";
+            else if (boost::iequals(type, "ai32"))
+                return "ai";
+            else if (boost::iequals(type, "au64"))
+                return "at";
+            else if (boost::iequals(type, "ai64"))
+                return "ax";
+            else if (boost::iequals(type, "ad"))
+                return "ad";
+            else if (boost::iequals(type, "as"))
+                return "as";
+            else if (boost::iequals(type, "ab"))
+                return "ab";
+
+            throw std::runtime_error((type + " is unknown type").c_str());
+        }
+
+        template<typename T>
+        std::vector<T> hex2arr(const String &hexVal, size_t w = sizeof(T))
+        {
+            std::vector<T> res;
+            String b = hex2bytes(hexVal);
+
+            std::cerr << hexVal << " to bytes: ";
+            for (size_t i = 0 ; i < b.size(); ++i)
+                std::cerr << (int)b[i] << " ";
+            std::cerr << "\n";
+
+            for (size_t i = 0; (i+w) <= b.size(); i += w)
+                res.push_back(*reinterpret_cast<T*>(&b[i]));
+
+            for (size_t i = 0; i < res.size(); ++i)
+                std::cerr << res[i] << " ";
+            std::cerr << "\n";
+
+            return res;
+        }
+
+        ajn::MsgArg hex2aj(const String &hexVal, const String &userType)
+        {
+            ajn::MsgArg val;
+
+            if (!userType.empty())
+            {
+                if (boost::iequals(userType, "hex"))
+                {
+                    val.Set("s", hexVal.c_str());
+                    val.Stabilize();
+                }
+
+                else if (boost::iequals(userType, "u8"))
+                    val.Set("y", strtoul(hexVal.c_str(), 0, 16));
+                else if (boost::iequals(userType, "u16"))
+                    val.Set("q", strtoul(hexVal.c_str(), 0, 16));
+                else if (boost::iequals(userType, "i16"))
+                    val.Set("n", strtoul(hexVal.c_str(), 0, 16));
+                else if (boost::iequals(userType, "u32"))
+                    val.Set("u", strtoul(hexVal.c_str(), 0, 16));
+                else if (boost::iequals(userType, "i32"))
+                    val.Set("i", strtoul(hexVal.c_str(), 0, 16));
+                else if (boost::iequals(userType, "u64"))
+                    val.Set("t", strtoull(hexVal.c_str(), 0, 16));
+                else if (boost::iequals(userType, "i64"))
+                    val.Set("x", strtoull(hexVal.c_str(), 0, 16));
+//                else if (boost::iequals(userType, "d"))
+//                    val.Set("d";
+                else if (boost::iequals(userType, "s"))
+                {
+                    String d = hex2bytes(hexVal);
+                    val.Set("s", d.c_str());
+                    val.Stabilize();
+                }
+                else if (boost::iequals(userType, "b"))
+                    val.Set("b", strtoul(hexVal.c_str(), 0, 16) != 0);
+
+                else if (boost::iequals(userType, "au8"))
+                {
+                    std::vector<UInt8> d = hex2arr<UInt8>(hexVal);
+                    val.Set("ay", d.size(), d.empty() ? 0 : &d[0]);
+                    val.Stabilize();
+                }
+                else if (boost::iequals(userType, "au16"))
+                {
+                    std::vector<UInt16> d = hex2arr<UInt16>(hexVal);
+                    val.Set("aq", d.size(), d.empty() ? 0 : &d[0]);
+                    val.Stabilize();
+                }
+                else if (boost::iequals(userType, "ai16"))
+                {
+                    std::vector<Int16> d = hex2arr<Int16>(hexVal);
+                    val.Set("an", d.size(), d.empty() ? 0 : &d[0]);
+                    val.Stabilize();
+                }
+                else if (boost::iequals(userType, "au32"))
+                {
+                    std::vector<UInt32> d = hex2arr<UInt32>(hexVal);
+                    val.Set("au", d.size(), d.empty() ? 0 : &d[0]);
+                    val.Stabilize();
+                }
+                else if (boost::iequals(userType, "ai32"))
+                {
+                    std::vector<Int32> d = hex2arr<Int32>(hexVal);
+                    val.Set("ai", d.size(), d.empty() ? 0 : &d[0]);
+                    val.Stabilize();
+                }
+                else if (boost::iequals(userType, "au64"))
+                {
+                    std::vector<UInt64> d = hex2arr<UInt64>(hexVal);
+                    val.Set("at", d.size(), d.empty() ? 0 : &d[0]);
+                    val.Stabilize();
+                }
+                else if (boost::iequals(userType, "ai64"))
+                {
+                    std::vector<Int64> d = hex2arr<Int64>(hexVal);
+                    val.Set("ax", d.size(), d.empty() ? 0 : &d[0]);
+                    val.Stabilize();
+                }
+//                else if (boost::iequals(userType, "ad"))
+//                    return "ad";
+//                else if (boost::iequals(userType, "as"))
+//                    return "as";
+//                else if (boost::iequals(userType, "ab"))
+//                    return "ab";
+            }
+
+            if (val.typeId == ajn::ALLJOYN_INVALID)
+            {
+                val.Set("s", hexVal.c_str());
+                val.Stabilize();
+            }
+
+            HIVELOG_INFO(m_log, "hex: " << hexVal << " to AJ: "
+                         << val.ToString().c_str()
+                         << " (user type:" << userType << ")");
+            return val;
+        }
+
+        String aj2hex(const ajn::MsgArg &val, const String &userType)
+        {
+            String hexVal;
+
+            if (!userType.empty())
+            {
+                if (boost::iequals(userType, "hex"))
+                {
+                    char *s = 0;
+                    val.Get("s", &s);
+                    hexVal = s;
+                }
+
+                else if (boost::iequals(userType, "u8"))
+                {
+                    UInt8 d = 0;
+                    val.Get("y", &d);
+                    hexVal = dump::hex(d);
+                }
+                else if (boost::iequals(userType, "u16"))
+                {
+                    UInt16 d = 0;
+                    val.Get("q", &d);
+                    hexVal = dump::hex(d);
+                }
+                else if (boost::iequals(userType, "i16"))
+                {
+                    Int16 d = 0;
+                    val.Get("n", &d);
+                    hexVal = dump::hex(d);
+                }
+                else if (boost::iequals(userType, "u32"))
+                {
+                    UInt32 d = 0;
+                    val.Get("u", &d);
+                    hexVal = dump::hex(d);
+                }
+                else if (boost::iequals(userType, "i32"))
+                {
+                    Int32 d = 0;
+                    val.Get("i", &d);
+                    hexVal = dump::hex(d);
+                }
+                else if (boost::iequals(userType, "u64"))
+                {
+                    UInt64 d = 0;
+                    val.Get("t", &d);
+                    hexVal = dump::hex(d);
+                }
+                else if (boost::iequals(userType, "i64"))
+                {
+                    Int64 d = 0;
+                    val.Get("x", &d);
+                    hexVal = dump::hex(d);
+                }
+//                else if (boost::iequals(userType, "d"))
+//                    val.Get("d";
+                else if (boost::iequals(userType, "s"))
+                {
+                    char *d = 0;
+                    val.Get("s", &d);
+                    hexVal = dump::hex(String(d));
+                }
+                else if (boost::iequals(userType, "b"))
+                {
+                    bool d = 0;
+                    val.Get("b", &d);
+                    hexVal = dump::hex(UInt8(d));
+                }
+
+//                else if (boost::iequals(userType, "au8"))
+//                {
+//                    std::vector<UInt8> d = hex2arr<UInt8>(hexVal);
+//                    val.Set("ay", d.size(), d.empty() ? 0 : &d[0]);
+//                    val.Stabilize();
+//                }
+//                else if (boost::iequals(userType, "au16"))
+//                {
+//                    std::vector<UInt16> d = hex2arr<UInt16>(hexVal);
+//                    val.Set("aq", d.size(), d.empty() ? 0 : &d[0]);
+//                    val.Stabilize();
+//                }
+//                else if (boost::iequals(userType, "ai16"))
+//                {
+//                    std::vector<Int16> d = hex2arr<Int16>(hexVal);
+//                    val.Set("an", d.size(), d.empty() ? 0 : &d[0]);
+//                    val.Stabilize();
+//                }
+//                else if (boost::iequals(userType, "au32"))
+//                {
+//                    std::vector<UInt32> d = hex2arr<UInt32>(hexVal);
+//                    val.Set("au", d.size(), d.empty() ? 0 : &d[0]);
+//                    val.Stabilize();
+//                }
+//                else if (boost::iequals(userType, "ai32"))
+//                {
+//                    std::vector<Int32> d = hex2arr<Int32>(hexVal);
+//                    val.Set("ai", d.size(), d.empty() ? 0 : &d[0]);
+//                    val.Stabilize();
+//                }
+//                else if (boost::iequals(userType, "au64"))
+//                {
+//                    std::vector<UInt64> d = hex2arr<UInt64>(hexVal);
+//                    val.Set("at", d.size(), d.empty() ? 0 : &d[0]);
+//                    val.Stabilize();
+//                }
+//                else if (boost::iequals(userType, "ai64"))
+//                {
+//                    std::vector<Int64> d = hex2arr<Int64>(hexVal);
+//                    val.Set("ax", d.size(), d.empty() ? 0 : &d[0]);
+//                    val.Stabilize();
+//                }
+//                else if (boost::iequals(userType, "ad"))
+//                    return "ad";
+//                else if (boost::iequals(userType, "as"))
+//                    return "as";
+//                else if (boost::iequals(userType, "ab"))
+//                    return "ab";
+
+            }
+
+            if (hexVal.empty())
+            {
+                char *d = 0;
+                val.Get("s", &d);
+                if (d) hexVal = d;
+            }
+
+            HIVELOG_INFO(m_log, "AJ: "
+                         << val.ToString().c_str()
+                         << " to hex: " << hexVal
+                         << " (user type:" << userType << ")");
+            return hexVal;
+        }
+
+    private:
+
+        void GetProp(const ajn::InterfaceDescription::Member*, ajn::Message& msg)
+        {
+            const char* iface = msg->GetArg(0)->v_string.str;
+            const char* property = msg->GetArg(1)->v_string.str;
+
+            m_ios.post(boost::bind(&BTDevice::safe_GetProp, shared_from_this(),
+                String(iface), String(property), ajn::Message(msg)));
+        }
+
+        void safe_GetProp(const String &ifaceName, const String &propName, ajn::Message msg)
+        {
+            if (bluepy::CharacteristicPtr ch = findProp(ifaceName, propName))
+            {
+                if (ch->getProperties()&PROP_READ)
+                {
+                    String userType = charTypeFromHandle(ch->getValueHandle());
+                    m_helper->readChar(ch->getValueHandle(),
+                        boost::bind(&BTDevice::done_GetProp,
+                        shared_from_this(), _1, _2, userType, msg));
+                }
+                else
+                    MethodReply(msg, ER_BUS_PROPERTY_ACCESS_DENIED);
+            }
+            else
+                MethodReply(msg, ER_BUS_UNKNOWN_INTERFACE);
+        }
+
+        void done_GetProp(const String &status, const String &value, const String &userType, ajn::Message msg)
+        {
+            if (status.empty()) // OK
+            {
+                ajn::MsgArg val = hex2aj(value, userType);
+
+                // Properties are returned as variants
+                ajn::MsgArg arg = ajn::MsgArg(ajn::ALLJOYN_VARIANT);
+                arg.v_variant.val = &val;
+                arg.Stabilize();
+                MethodReply(msg, &arg, 1);
+            }
+            else
+                MethodReply(msg, "failed to read characteristic from BLE device", status.c_str());
+        }
+
+    private:
+
+        void SetProp(const ajn::InterfaceDescription::Member*, ajn::Message& msg)
+        {
+            const char* iface = msg->GetArg(0)->v_string.str;
+            const char* property = msg->GetArg(1)->v_string.str;
+            const ajn::MsgArg* val = msg->GetArg(2);
+
+            m_ios.post(boost::bind(&BTDevice::safe_SetProp, shared_from_this(),
+                String(iface), String(property), val, ajn::Message(msg)));
+        }
+
+        void safe_SetProp(const String &ifaceName, const String &propName, const ajn::MsgArg *val, ajn::Message msg)
+        {
+            if (bluepy::CharacteristicPtr ch = findProp(ifaceName, propName))
+            {
+                if (ch->getProperties()&(PROP_WRITE|PROP_WRITE_woR))
+                {
+                    String userType = charTypeFromHandle(ch->getValueHandle());
+                    String hexVal = aj2hex(*val, userType);
+                    bool with_resp = false;
+                    m_helper->writeChar(ch->getValueHandle(), hexVal, with_resp,
+                        boost::bind(&BTDevice::done_SetProp,
+                        shared_from_this(), _1, msg));
+                }
+                else
+                    MethodReply(msg, ER_BUS_PROPERTY_ACCESS_DENIED);
+            }
+            else
+                MethodReply(msg, ER_BUS_UNKNOWN_INTERFACE);
+        }
+
+        void done_SetProp(const String &status, ajn::Message msg)
+        {
+            if (status.empty()) // OK
+            {
+                //            // notify all session members that this property has changed
+                //            const SessionId id = msg->hdrFields.field[ALLJOYN_HDR_FIELD_SESSION_ID].v_uint32;
+                //            EmitPropChanged(iface->v_string.str, property->v_string.str, *(val->v_variant.val), id);
+
+                MethodReply(msg, ER_OK);
+            }
+            else
+                MethodReply(msg, "failed to write characteristic to BLE device", status.c_str());
+        }
+
+    public:
+
+        static String simplify(const String &s)
+        {
+            // remove spaces and dots
+            String res;
+            res.reserve(s.size());
+            for (size_t i = 0; i < s.size(); ++i)
+                if (isalnum(s[i]) || s[i]=='_')
+                    res.push_back(s[i]);
+            return res;
+        }
+
+    private:
+        String ifaceNameFromUUID(const bluepy::UUID &uuid) const
+        {
+            using bluepy::UUID;
+
+            String meta_name = m_meta["interfaceNames"][uuid.toStr()].asString();
+            if (!meta_name.empty()) return meta_name;
+
+            // Service UUIDs
+            if (uuid == UUID(0x1811)) return "AlertNotificationService";
+            if (uuid == UUID(0x180F)) return "BatteryService";
+            if (uuid == UUID(0x1810)) return "BloodPressure";
+            if (uuid == UUID(0x1805)) return "CurrentTimeService";
+            if (uuid == UUID(0x1818)) return "CyclingPower";
+            if (uuid == UUID(0x1816)) return "CyclingSpeedAndCadence";
+            if (uuid == UUID(0x180A)) return "DeviceInformation";
+            if (uuid == UUID(0x1800)) return "GenericAccess";
+            if (uuid == UUID(0x1801)) return "GenericAttribute";
+            if (uuid == UUID(0x1808)) return "Glucose";
+            if (uuid == UUID(0x1809)) return "HealthThermometer";
+            if (uuid == UUID(0x180D)) return "HeartRate";
+            if (uuid == UUID(0x1812)) return "HumanInterfaceDevice";
+            if (uuid == UUID(0x1802)) return "ImmediateAlert";
+            if (uuid == UUID(0x1803)) return "LinkLoss";
+            if (uuid == UUID(0x1819)) return "LocationAndNavigation";
+            if (uuid == UUID(0x1807)) return "NextDSTChangeService";
+            if (uuid == UUID(0x180E)) return "PhoneAlertStatusService";
+            if (uuid == UUID(0x1806)) return "ReferenceTimeUpdateService";
+            if (uuid == UUID(0x1814)) return "RunningSpeedAndCadence";
+            if (uuid == UUID(0x1813)) return "ScanParameters";
+            if (uuid == UUID(0x1804)) return "TxPower";
+            if (uuid == UUID(0x181C)) return "UserData";
+            if (uuid == UUID(0xFFE0)) return "SimpleKeysService";
+
+            return uuid.toStr();
+        }
+
+        String charNameFromUUID(const bluepy::UUID &uuid, const String &desc) const
+        {
+            using bluepy::UUID;
+
+            String meta_name = m_meta["characteristicNames"][uuid.toStr()].asString();
+            if (!meta_name.empty()) return meta_name;
+
+            // Characteristic UUIDs
+            if (uuid == UUID(0x2A00)) return "DeviceName";
+            if (uuid == UUID(0x2A01)) return "Appearance";
+            if (uuid == UUID(0x2A02)) return "PeripheralPrivacyFlag";
+            if (uuid == UUID(0x2A03)) return "ReconnectionAddress";
+            if (uuid == UUID(0x2A04)) return "PeripheralPreferredConnectionParameters";
+            if (uuid == UUID(0x2A05)) return "ServiceChanged";
+            if (uuid == UUID(0x2A07)) return "TxPowerLevel";
+            if (uuid == UUID(0x2A19)) return "BatteryLevel";
+            if (uuid == UUID(0x2A23)) return "SystemID";
+            if (uuid == UUID(0x2A24)) return "ModelNumberString";
+            if (uuid == UUID(0x2A25)) return "SerialNumberString";
+            if (uuid == UUID(0x2A26)) return "FirmwareRevisionString";
+            if (uuid == UUID(0x2A27)) return "HardwareRevisionString";
+            if (uuid == UUID(0x2A28)) return "SoftwareRevisionString";
+            if (uuid == UUID(0x2A29)) return "ManufacturerNameString";
+
+            if (!desc.empty())
+            {
+                String name = simplify(desc);
+                if (!name.empty())
+                    return name;
+            }
+
+            return uuid.toStr();
+        }
+
+        String charTypeFromHandle(UInt32 handle) const
+        {
+            String meta_type = m_meta["characteristicTypes"][boost::lexical_cast<String>(handle)].asString();
+            if (!meta_type.empty()) return meta_type;
+
+            return "hex"; // hex by default
+        }
+
+        enum PropsMask
+        {
+            PROP_BROADCAST  = 0x01,
+            PROP_READ       = 0x02,
+            PROP_WRITE_woR  = 0x04,
+            PROP_WRITE      = 0x08,
+            PROP_NOTIFY     = 0x10,
+            PROP_INDICATE   = 0x20
+        };
+
+        json::Value accessFromProperties(UInt32 props)
+        {
+            String res;
+
+#define DO_TEST(MASK,RES) if (props&(MASK)) { res += RES; props&=~(MASK); }
+            DO_TEST(PROP_BROADCAST, "B");
+            DO_TEST(PROP_READ     , "R");
+            DO_TEST(PROP_WRITE_woR, "w");
+            DO_TEST(PROP_WRITE    , "W");
+            DO_TEST(PROP_NOTIFY   , "N");
+            DO_TEST(PROP_INDICATE , "I");
+#undef DO_TEST
+
+            if (props) // unknown flags
+            {
+                res += "-" + boost::lexical_cast<String>(props);
+            }
+
+            return res;
+        }
+
+
+        bluepy::CharacteristicPtr findNearestChar(UInt32 handle)
+        {
+            bluepy::CharacteristicPtr res;
+            for (size_t i = 0; i < m_chars.size(); ++i)
+            {
+                bluepy::CharacteristicPtr ch = m_chars[i];
+                if (handle < ch->getHandle())
+                    break;
+
+                res = ch;
+            }
+
+            return res;
+        }
+
+        String hex2bytes(const String &hex)
+        {
+            String res;
+            if (hex.size()%2) throw std::runtime_error("invalid HEX string");
+            res.reserve(hex.size()/2);
+            for (size_t i = 0; i < hex.size(); i += 2)
+            {
+                int a = hive::misc::hex2int(hex[i+0]);
+                int b = hive::misc::hex2int(hex[i+1]);
+                if (a < 0 || b < 0) throw std::runtime_error("not a HEX string");
+                res.push_back((a<<4) | b);
+            }
+            return res;
+        }
+
+    private:
+        boost::asio::io_service &m_ios;
         String m_MAC;
+        json::Value m_meta;
+        bluepy::PeripheralPtr m_helper;
+        std::vector<bluepy::ServicePtr> m_services;
+        std::vector<bluepy::CharacteristicPtr> m_chars;
+        int m_active_req;
+        ajn::BusAttachment *m_AJ_bus;
         log::Logger m_log;
     };
 
@@ -759,8 +1573,14 @@ private:
         BTDevicePtr &bt = m_bt_devices[MAC];
         if (!bt)
         {
-            bt = BTDevice::create(MAC);
+            bluepy::PeripheralPtr helper = m_plist->findHelper(MAC);
+            String objPath = meta["objectPath"].asString();
+            if (objPath.empty()) objPath = "/" + BTDevice::simplify(MAC);
+            bt = BTDevice::create(MAC, objPath, helper, meta);
             n += 1;
+
+            bt->inspect();
+            bt->registerWhenInsected(const_cast<ajn::BusAttachment&>(GetBusAttachment()));
         }
 
         ajn::MsgArg ret_args[1];
@@ -800,6 +1620,18 @@ private:
         HIVELOG_DEBUG(m_log, "deleteDevice: MAC:\"" << MAC << "\"");
         // TODO: create device
         unsigned int n = 0;
+
+        BTDevicePtr bt;
+        std::map<String, BTDevicePtr>::iterator it = m_bt_devices.find(MAC);
+        if (it != m_bt_devices.end())
+            bt = it->second;
+
+        if (bt)
+        {
+
+            if (ajn::services::AboutServiceApi* about = ajn::services::AboutServiceApi::getInstance())
+                about->RemoveObjectDescription(bt->GetPath(), bt->getAllInterfaces());
+        }
 
         n += m_bt_devices.erase(MAC);
 

@@ -477,8 +477,14 @@ public:
     {}
 
     explicit UUID(const String &val)
-        : m_val(val)
-    {}
+    {
+        if (val.size() == 4)
+            m_val = "0000" + val + "-0000-1000-8000-00805f9b34fb";
+        else if (val.size() == 8)
+            m_val = val + "-0000-1000-8000-00805f9b34fb";
+        else
+            m_val = val;
+    }
 
     explicit UUID(const UInt32 &val)
         : m_val(dump::hex(val) + "-0000-1000-8000-00805f9b34fb")
@@ -513,43 +519,6 @@ public:
     String getCommonName() const
     {
         // TODO: use map here?
-
-        // Service UUIDs
-        if (*this == UUID(0x1811)) return "Alert Notification Service";
-        if (*this == UUID(0x180F)) return "Battery Service";
-        if (*this == UUID(0x1810)) return "Blood Pressure";
-        if (*this == UUID(0x1805)) return "Current Time Service";
-        if (*this == UUID(0x1818)) return "Cycling Power";
-        if (*this == UUID(0x1816)) return "Cycling Speed and Cadence";
-        if (*this == UUID(0x180A)) return "Device Information";
-        if (*this == UUID(0x1800)) return "Generic Access";
-        if (*this == UUID(0x1801)) return "Generic Attribute";
-        if (*this == UUID(0x1808)) return "Glucose";
-        if (*this == UUID(0x1809)) return "Health Thermometer";
-        if (*this == UUID(0x180D)) return "Heart Rate";
-        if (*this == UUID(0x1812)) return "Human Interface Device";
-        if (*this == UUID(0x1802)) return "Immediate Alert";
-        if (*this == UUID(0x1803)) return "Link Loss";
-        if (*this == UUID(0x1819)) return "Location and Navigation";
-        if (*this == UUID(0x1807)) return "Next DST Change Service";
-        if (*this == UUID(0x180E)) return "Phone Alert Status Service";
-        if (*this == UUID(0x1806)) return "Reference Time Update Service";
-        if (*this == UUID(0x1814)) return "Running Speed and Cadence";
-        if (*this == UUID(0x1813)) return "Scan Parameters";
-        if (*this == UUID(0x1804)) return "Tx Power";
-        if (*this == UUID(0x181C)) return "User Data";
-
-        // Characteristic UUIDs
-        if (*this == UUID(0x2A00)) return "Device Name";
-        if (*this == UUID(0x2A07)) return "Tx Power Level";
-        if (*this == UUID(0x2A19)) return "Battery Level";
-        if (*this == UUID(0x2A24)) return "Model Number String";
-        if (*this == UUID(0x2A25)) return "Serial Number String";
-        if (*this == UUID(0x2A26)) return "Firmware Revision String";
-        if (*this == UUID(0x2A27)) return "Hardware Revision String";
-        if (*this == UUID(0x2A28)) return "Software Revision String";
-        if (*this == UUID(0x2A29)) return "Manufacturer Name String";
-
         if (boost::iends_with(m_val, "-0000-1000-8000-00805f9b34fb"))
         {
             if (boost::istarts_with(m_val, "0000"))
@@ -638,6 +607,7 @@ private:
         , m_handle(handle)
         , m_properties(properties)
         , m_valueHandle(valueHandle)
+        , clientConfig(0)
     {}
 
 public:
@@ -691,6 +661,10 @@ private:
     UInt32 m_handle;
     UInt32 m_properties;
     UInt32 m_valueHandle;
+
+public:
+    UInt32 clientConfig;    // 0x2902
+    String userDesc;        // 0x2901
 };
 
 
@@ -707,6 +681,17 @@ private:
     {}
 
 public:
+
+    const UUID& getUUID() const
+    {
+        return m_uuid;
+    }
+
+    UInt32 getHandle() const
+    {
+        return m_handle;
+    }
+
     String toStr() const
     {
         OStringStream oss;
@@ -786,6 +771,12 @@ public:
     const String& getAddress() const
     {
         return m_deviceAddr;
+    }
+
+
+    boost::asio::io_service& getIoService()
+    {
+        return m_ios;
     }
 
 public:
@@ -947,6 +938,7 @@ private:
         class Disconnect;
         class Services;
         class Characteristics;
+        class Descriptors;
         class CharRead;
         class CharWrite;
     };
@@ -1531,6 +1523,104 @@ public:
                            : Callback();
 
         // connect first, then send Characteristics
+        connect(boost::bind(&Peripheral::onConnected,
+            shared_from_this(), _1, ok, fail));
+    }
+
+
+public:
+
+    // [list of descriptors]
+    typedef boost::function2<void, String, std::vector<DescriptorPtr> > DescriptorsCallback;
+
+
+    /**
+     * @brief The Descriptors command.
+     */
+    class Command::Descriptors: public Command
+    {
+    protected:
+        Descriptors() {}
+
+    public:
+        static boost::shared_ptr<Descriptors> create(UInt32 start, UInt32 end,
+                                                     DescriptorsCallback cb)
+        {
+            boost::shared_ptr<Descriptors> pthis(new Descriptors());
+
+            pthis->m_cmd = "desc ";
+            pthis->m_cmd += dump::hex(start);
+            pthis->m_cmd += " ";
+            pthis->m_cmd += dump::hex(end);
+            pthis->m_cmd += "\n";
+
+            pthis->m_cb = cb;
+            return pthis;
+        }
+
+        virtual String getCommand() const
+        {
+            return m_cmd;
+        }
+
+        virtual bool wantProcess(const String &resp) const
+        {
+            return boost::iequals(resp, "desc")
+                || boost::iequals(resp, "err");
+        }
+
+        virtual bool process(const String &resp, const json::Value &data)
+        {
+            if (!wantProcess(resp))
+                return false;
+
+            json::Value hnd = data["hnd"];
+            json::Value uuid = data["uuid"];
+
+            std::vector<DescriptorPtr> desc;
+            if (uuid.isArray())
+            {
+                for (size_t i = 0; i < uuid.size(); ++i)
+                {
+                    desc.push_back(DescriptorPtr(new Descriptor(UUID(uuid[i].asString()),
+                                                                      hnd[i].asUInt32())));
+                }
+            }
+            else
+            {
+                desc.push_back(DescriptorPtr(new Descriptor(UUID(uuid.asString()),
+                                                                  hnd.asUInt32())));
+            }
+
+            String status;
+            if (boost::iequals(resp, "err"))
+                status = data["code"].asString();
+
+            if (m_cb) m_cb(status, desc);
+            return true;
+        }
+
+    private:
+        DescriptorsCallback m_cb;
+        String m_cmd;
+    };
+
+    void descriptors(DescriptorsCallback cb = DescriptorsCallback(),
+                     UInt32 start=0x0001, UInt32 end=0xFFFF)
+    {
+        startHelper();
+
+        // send Descriptors command if connected
+        CommandPtr cmd = Command::Descriptors::create(start, end, cb);
+        Callback ok = boost::bind(&Peripheral::writeCmd,
+                          shared_from_this(), cmd);
+
+        // otherwise report error
+        Callback fail = cb ? boost::bind(cb, String("Disconnected"),
+                                         std::vector<DescriptorPtr>())
+                           : Callback();
+
+        // connect first, then send Descriptors
         connect(boost::bind(&Peripheral::onConnected,
             shared_from_this(), _1, ok, fail));
     }
