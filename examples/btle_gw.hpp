@@ -551,7 +551,7 @@ public:
         if (1) // manager
         {
             ajn::InterfaceDescription *iface = Manager_createInterface(bus);
-            status = AddInterface(*iface, ajn::BusObject::ANNOUNCED);
+            status = AddInterface(*iface/*, ajn::BusObject::ANNOUNCED*/);
             AJ_check(status, "unable to add interface");
             iface->Activate();
 
@@ -561,7 +561,7 @@ public:
         if (1) // RAW
         {
             ajn::InterfaceDescription *iface = RAW_createInterface(bus);
-            status = AddInterface(*iface, ajn::BusObject::ANNOUNCED);
+            status = AddInterface(*iface/*, ajn::BusObject::ANNOUNCED*/);
             AJ_check(status, "unable to add interface");
             iface->Activate();
 
@@ -922,7 +922,7 @@ private:
 
                 if (iface) // activate interface
                 {
-                    AddInterface(*iface, ajn::BusObject::ANNOUNCED);
+                    AddInterface(*iface/*, ajn::BusObject::ANNOUNCED*/);
                     iface->Activate();
                 }
 

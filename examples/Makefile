@@ -35,12 +35,16 @@ endif
 #home_path:=${PWD}
 #base_path:=$(shell dirname "${home_path}")
 home_path:=.
-include_dirs:=-I${home_path}/../include -I${home_path}/../externals/include
+include_dirs:=-I${home_path}/../include -I${home_path}/../externals/include \
+      -I${ALLJOYN_DIST}/inc
 ex_libs:=${home_path}/../externals/lib.${platform}
 
+LIBS += -lalljoyn -lalljoyn_about -lstdc++ -lcrypto -lpthread -lrt -lssl -ldl
+defines+=-DQCC_OS_LINUX -DQCC_OS_GROUP_POSIX -DQCC_CPU_X86
 defines+=-DBOOST_SYSTEM_NO_DEPRECATED
 # disable SSL for tests
 defines+=-DHIVE_DISABLE_SSL
+
 
 ifeq '${variant}' 'debug'
   defines+=-D_DEBUG
@@ -53,8 +57,9 @@ endif
 
 CXXFLAGS+=-Wall -Wno-unused-local-typedefs ${include_dirs} ${defines}
 CXXFLAGS+=-fdata-sections -ffunction-sections
-LDFLAGS+=-Wl,--gc-sections -pthread -L${ex_libs}
+LDFLAGS+=-Wl,--gc-sections -pthread -L${ex_libs} -L$(ALLJOYN_DIST)/lib $(LIBS)
 #LIBS+=-lboost_system
+
 
 examples: simple_dev simple_gw zigbee_gw btle_gw
 
