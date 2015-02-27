@@ -725,6 +725,8 @@ class Peripheral
 private:
     Peripheral(boost::asio::io_service &ios, const String &helperPath, const String &deviceAddr)
         : m_ios(ios)
+        , m_idle_timer(ios)
+        , m_idle_timeout(0)
         , m_helperPath(helperPath)
         , m_deviceAddr(deviceAddr)
         , m_discoveredAllServices(false)
@@ -761,7 +763,6 @@ public:
     void stop()
     {
         stopHelper();
-        m_terminated_cb = TerminatedCallback();
     }
 
 
@@ -789,6 +790,37 @@ public:
     void callWhenTerminated(TerminatedCallback cb)
     {
         m_terminated_cb = cb;
+    }
+
+
+    void setIdleTimeout(int timeout_ms)
+    {
+        m_idle_timeout = timeout_ms;
+        restartIdleTimeout();
+    }
+
+private:
+
+    void restartIdleTimeout()
+    {
+        if (m_idle_timeout)
+        {
+            HIVELOG_TRACE(m_log, "re-starting idle timeout (" << m_idle_timeout << " ms)");
+            m_idle_timer.expires_from_now(boost::posix_time::milliseconds(m_idle_timeout));
+            m_idle_timer.async_wait(boost::bind(&Peripheral::idleTimedout,
+                shared_from_this(), boost::asio::placeholders::error));
+        }
+        else
+            m_idle_timer.cancel();
+    }
+
+    void idleTimedout(boost::system::error_code err)
+    {
+        if (!err)
+        {
+            HIVELOG_INFO(m_log, "idle timed out, stopping");
+            stop();
+        }
     }
 
 private:
@@ -954,6 +986,20 @@ private:
     {
         bool is_progress = !m_commands.empty();
         m_commands.push_back(cmd);
+        HIVELOG_TRACE(m_log, "putting \"" << Process::escape(cmd->getCommand()) << "\" to the BACK of command queue");
+
+        if (!is_progress)
+            writeNextCommand();
+    }
+
+    /**
+     * @brief Write command to the front of command queue!
+     */
+    void writeCmdFront(const CommandPtr &cmd)
+    {
+        bool is_progress = !m_commands.empty();
+        m_commands.push_front(cmd);
+        HIVELOG_TRACE(m_log, "putting \"" << Process::escape(cmd->getCommand()) << "\" to the FRONT of command queue");
 
         if (!is_progress)
             writeNextCommand();
@@ -972,6 +1018,8 @@ private:
             HIVELOG_DEBUG(m_log, "sending \"" << Process::escape(cmd) << "\" to STDIN");
             m_helper->writeStdin(cmd);
         }
+
+        restartIdleTimeout();
     }
 
     /**
@@ -998,27 +1046,30 @@ private:
         {
             json::Value data = Peripheral::parseResp(line);
             HIVELOG_DEBUG(m_log, "response parsed as " << json::toStr(data));
+            restartIdleTimeout();
 
             String rsp = data["rsp"].asString();
             if (rsp.empty()) throw std::runtime_error("no response type indicator");
 
             if (!m_commands.empty() && m_commands.front()->wantProcess(rsp))
             {
-                if (m_commands.front()->process(rsp, data))
+                CommandPtr cmd = m_commands.front();
+                if (cmd->process(rsp, data))
                 {
-                    m_commands.pop_front();
+                    m_commands.remove(cmd); // cmd might not be the first
                     if (!m_commands.empty())
                         writeNextCommand();
                 }
             }
-//            else if (rsp == "stat" && data["state"].asString() == "disc")
-//            {
-//                throw std::runtime_error("device disconnected");
-//            }
+            else if (rsp == "stat" && data["state"].asString() == "disc")
+            {
+                if (m_disconnect_cb)
+                    m_ios.post(boost::bind(m_disconnect_cb, String("Disconnected")));
+            }
             else if (rsp == "err")
             {
-                throw std::runtime_error("Bluetooth error: " + data["code"].asString());
-                // TODO: process error
+                if (m_error_cb)
+                    m_ios.post(boost::bind(m_error_cb, data["code"].asString()));
             }
             else if (rsp == "ntfy")
             {
@@ -1039,14 +1090,28 @@ private:
 
 public:
     typedef boost::function2<void, UInt32, String> NotificationCallback;
+    typedef boost::function1<void, String> DisconnectCallback;
+    typedef boost::function1<void, String> ErrorCallback;
 
     void callOnNewNotification(NotificationCallback cb)
     {
         m_notification_cb = cb;
     }
 
+    void callOnUnintendedDisconnect(DisconnectCallback cb)
+    {
+        m_disconnect_cb = cb;
+    }
+
+    void callOnUnhandledError(ErrorCallback cb)
+    {
+        m_error_cb = cb;
+    }
+
 private:
     NotificationCallback m_notification_cb;
+    DisconnectCallback m_disconnect_cb;
+    ErrorCallback m_error_cb;
 
     /**
      * @brief Process notifications.
@@ -1233,8 +1298,8 @@ public: // connect
 
         // otherwise send Connect command
         CommandPtr cmd = Command::Connect::create(m_deviceAddr, cb);
-        Callback fail = boost::bind(&Peripheral::writeCmd,
-                            shared_from_this(), cmd);
+        Callback fail = boost::bind(&Peripheral::writeCmdFront,
+                                shared_from_this(), cmd);
 
         // check status first, then connect
         status(boost::bind(&Peripheral::onStatusConn,
@@ -1327,7 +1392,7 @@ public: // disconnect
 
         // otherwise send Disconnect command
         CommandPtr cmd = Command::Disconnect::create(cb);
-        Callback fail = boost::bind(&Peripheral::writeCmd,
+        Callback fail = boost::bind(&Peripheral::writeCmdFront,
                             shared_from_this(), cmd);
 
         // check status first, then disconnect
@@ -1411,7 +1476,7 @@ public:
 
         // send Services command if connected
         CommandPtr cmd = Command::Services::create(cb);
-        Callback ok = boost::bind(&Peripheral::writeCmd,
+        Callback ok = boost::bind(&Peripheral::writeCmdFront,
                           shared_from_this(), cmd);
 
         // otherwise report error
@@ -1514,7 +1579,7 @@ public:
 
         // send Characteristics command if connected
         CommandPtr cmd = Command::Characteristics::create(start, end, uuid, cb);
-        Callback ok = boost::bind(&Peripheral::writeCmd,
+        Callback ok = boost::bind(&Peripheral::writeCmdFront,
                           shared_from_this(), cmd);
 
         // otherwise report error
@@ -1612,7 +1677,7 @@ public:
 
         // send Descriptors command if connected
         CommandPtr cmd = Command::Descriptors::create(start, end, cb);
-        Callback ok = boost::bind(&Peripheral::writeCmd,
+        Callback ok = boost::bind(&Peripheral::writeCmdFront,
                           shared_from_this(), cmd);
 
         // otherwise report error
@@ -1683,7 +1748,7 @@ public:
 
         // send CharRead command if connected
         CommandPtr cmd = Command::CharRead::create(handle, cb);
-        Callback ok = boost::bind(&Peripheral::writeCmd,
+        Callback ok = boost::bind(&Peripheral::writeCmdFront,
                           shared_from_this(), cmd);
 
         // otherwise report error
@@ -1764,7 +1829,7 @@ public:
 
         // send CharWrite command if connected
         CommandPtr cmd = Command::CharWrite::create(handle, val, withResp, cb);
-        Callback ok = boost::bind(&Peripheral::writeCmd,
+        Callback ok = boost::bind(&Peripheral::writeCmdFront,
                           shared_from_this(), cmd);
 
         // otherwise report error
@@ -1789,6 +1854,8 @@ public:
 
 private:
     boost::asio::io_service &m_ios;
+    boost::asio::deadline_timer m_idle_timer;
+    int m_idle_timeout;
     String m_helperPath;
 
     ProcessPtr m_helper;

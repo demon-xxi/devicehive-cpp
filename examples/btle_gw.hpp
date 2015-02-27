@@ -370,10 +370,12 @@ public:
     hci_filter scan_filter_old;
     bool scan_filter_old_valid;
 
+    typedef boost::function2<void,String,String> ScanCallback;
+
     /**
      * @brief Start scan operation.
      */
-    void scanStart(const json::Value &opts)
+    void scanStart(const json::Value &opts, ScanCallback cb)
     {
         uint8_t own_type = LE_PUBLIC_ADDRESS;
         uint8_t scan_type = 0x01;
@@ -492,6 +494,7 @@ public:
         if (err < 0) throw std::runtime_error("failed to set filter option");
 
         m_scan_devices.clear(); // new search...
+        m_scan_cb = cb;
     }
 
 
@@ -512,6 +515,8 @@ public:
             int err = hci_le_set_scan_enable(m_dd, 0x00, scan_filter_dup, 10000);
             if (err < 0) throw std::runtime_error("failed to disable scan");
         }
+
+        m_scan_cb = ScanCallback();
     }
 
 public:
@@ -556,6 +561,7 @@ public:
 private:
     bool m_scan_active;
     bool m_read_active;
+    ScanCallback m_scan_cb;
     boost::asio::streambuf m_read_buf;
     std::map<String, String> m_scan_devices;
 
@@ -586,7 +592,13 @@ private:
                     ba2str(&info->bdaddr, addr);
                     String name = parse_name(info->data, info->length);
 
-                    m_scan_devices[addr] = name;
+                    if (!name.empty())
+                        m_scan_devices[addr] = name;
+                    else if (m_scan_devices.find(addr) == m_scan_devices.end())
+                        m_scan_devices[addr] = "(unknown)"; // save as unknown if not exists
+
+                    if (!name.empty() && m_scan_cb)
+                        m_ios.post(boost::bind(m_scan_cb, String(addr), name));
                 }
             }
 
@@ -636,7 +648,7 @@ private:
             eir += field_len + 1;
         }
 
-        return "(unknown)";
+        return String();
     }
 
 public:
@@ -3176,7 +3188,8 @@ private:
                 m_pendingScanCmdTimeout->cancel();
             onScanCommandTimeout();
 
-            m_bluetooth->scanStart(command->params);
+            m_bluetooth->scanStart(command->params,
+                    boost::bind(&This::onScanFound, shared_from_this(), _1, _2)); // send notification on new device found
             m_bluetooth->asyncReadSome();
 
             const int def_timeout = boost::iequals(command->name, "scan") ? 20 : 0;
@@ -3187,6 +3200,7 @@ private:
                     boost::bind(&This::onScanCommandTimeout, shared_from_this()));
             }
 
+            m_scanReportedDevices.clear();
             m_pendingScanCmd = command;
             return false; // pended
         }
@@ -3743,6 +3757,23 @@ private:
     }
 
 
+    /// @brief New device found.
+    void onScanFound(const String &MAC, const String &name)
+    {
+        HIVELOG_INFO(m_log, "found " << MAC << " - " << name);
+        bool reported = m_scanReportedDevices.find(MAC) != m_scanReportedDevices.end();
+        if (m_device && m_service && !reported)
+        {
+            json::Value params;
+            params[MAC] = name;
+
+            m_service->asyncInsertNotification(m_device,
+                devicehive::Notification::create("xgatt/scan", params));
+            m_scanReportedDevices.insert(MAC); // mark as reported
+        }
+    }
+
+
     /// @brief Send current scan results
     void onScanCommandTimeout()
     {
@@ -3915,6 +3946,9 @@ private:
         bluepy::PeripheralPtr helper = bluepy::Peripheral::create(m_ios, m_helperPath, device);
         helper->callWhenTerminated(boost::bind(&This::onHelperTerminated, shared_from_this(), _1, helper));
         helper->callOnNewNotification(boost::bind(&This::onHelperNotification, shared_from_this(), _1, _2, helper));
+        helper->callOnUnintendedDisconnect(boost::bind(&This::onHelperDisconnected, shared_from_this(), _1, helper));
+        helper->callOnUnhandledError(boost::bind(&This::onHelperError, shared_from_this(), _1, helper));
+        helper->setIdleTimeout(60*1000);
         m_helpers[device] = helper;
         return helper;
     }
@@ -3929,6 +3963,13 @@ private:
 
         const String &device = helper->getAddress();
         HIVELOG_INFO(m_log, device << " stopped and removed");
+
+        // unbind callbacks to release shared pointers...
+        helper->callWhenTerminated(bluepy::Peripheral::TerminatedCallback());
+        helper->callOnNewNotification(bluepy::Peripheral::NotificationCallback());
+        helper->callOnUnintendedDisconnect(bluepy::Peripheral::DisconnectCallback());
+        helper->callOnUnhandledError(bluepy::Peripheral::ErrorCallback());
+        helper->setIdleTimeout(0);
 
         // release helpers
         m_helpers.erase(device);
@@ -3962,6 +4003,47 @@ private:
             m_service->asyncInsertNotification(m_device,
                 devicehive::Notification::create("xgatt/value", params));
         }
+    }
+
+
+    /**
+     * @brief Stop helper on disconnection.
+     */
+    void onHelperDisconnected(const String &status, bluepy::PeripheralPtr helper)
+    {
+        HIVE_UNUSED(status);
+
+        if (m_device && m_service)
+        {
+            json::Value params;
+            params["device"] = helper->getAddress();
+
+            m_service->asyncInsertNotification(m_device,
+                devicehive::Notification::create("xgatt/diconnected", params));
+        }
+
+        HIVELOG_WARN(m_log, "BTLE device is diconnected, stopping...");
+        helper->stop();
+    }
+
+
+    /**
+     * @brief Stop helper on error.
+     */
+    void onHelperError(const String &status, bluepy::PeripheralPtr helper)
+    {
+        if (m_device && m_service)
+        {
+            json::Value params;
+            params["device"] = helper->getAddress();
+            params["error"] = status;
+
+            m_service->asyncInsertNotification(m_device,
+                devicehive::Notification::create("xgatt/error", params));
+        }
+
+        HIVELOG_WARN(m_log, "BTLE device error: \"" << status << "\", stopping...");
+        helper->stop();
     }
 
 
@@ -4285,6 +4367,7 @@ private:
 
     devicehive::CommandPtr m_pendingScanCmd;
     basic_app::DelayedTask::SharedPtr m_pendingScanCmdTimeout;
+    std::set<String> m_scanReportedDevices; // set of devices already reported
 
 private:
     devicehive::IDeviceServicePtr m_service; ///< @brief The cloud service.
