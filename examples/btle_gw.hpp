@@ -23,6 +23,15 @@
 #include <alljoyn/about/AboutPropertyStoreImpl.h>
 #include <alljoyn/about/AboutServiceApi.h>
 
+#include <alljoyn/controlpanel/ControlPanelService.h>
+#include <alljoyn/controlpanel/ControlPanelControllee.h>
+#include <alljoyn/controlpanel/LanguageSets.h>
+#include <alljoyn/controlpanel/Label.h>
+#include <alljoyn/controlpanel/Property.h>
+#include <alljoyn/controlpanel/Action.h>
+
+qcc::String g_MAC_addr;
+
 namespace bluetooth
 {
     using namespace hive;
@@ -501,19 +510,6 @@ typedef Device::SharedPtr DevicePtr;
 } // bluetooth namespace
 
 
-namespace alljoyn
-{
-    using namespace hive;
-
-
-static const char* BUS_NAME = "AllJoyn-GATT";
-const int SERVICE_PORT = 777;
-
-const char *MANAGER_OBJ_PATH = "/Manager";
-const char *MANAGER_IFACE_NAME = "com.devicehive.gatt.Manager";
-const char *RAW_IFACE_NAME = "com.devicehive.gatt.RAW";
-
-
 /**
  * @brief Check AllJoyn status code and throw an exception if it's not ER_OK.
  */
@@ -526,6 +522,19 @@ inline void AJ_check(QStatus status, const char *text)
         throw std::runtime_error(ess.str());
     }
 }
+
+
+namespace alljoyn
+{
+    using namespace hive;
+
+
+static const char* BUS_NAME = "AllJoyn-GATT";
+const int SERVICE_PORT = 777;
+
+const char *MANAGER_OBJ_PATH = "/Manager";
+const char *MANAGER_IFACE_NAME = "com.devicehive.gatt.Manager";
+const char *RAW_IFACE_NAME = "com.devicehive.gatt.RAW";
 
 
 /**
@@ -544,6 +553,7 @@ public:
         , m_plist(plist)
         , m_delayed(delayed)
         , m_bt_dev(bt_dev)
+        , m_controllee(0)
         , m_log("/alljoyn/gatt/Manager")
     {
         QStatus status;
@@ -681,6 +691,191 @@ private:
         AJ_check(status, "unable to register method handler");
 
         // TODO: connect/disconnect/status
+    }
+
+public:
+
+    /**
+     * @brief Build ControlPanel controllee related to manager object.
+    */
+    ajn::services::ControlPanelControllee* getControllee()
+    {
+        if (!m_controllee)
+        {
+            using namespace ajn::services;
+
+            m_controllee = new ControlPanelControllee();
+
+            QStatus status;
+
+            LanguageSet lang_set("btle_gw_lang_set");
+            lang_set.addLanguage("en");
+            LanguageSets::add(lang_set.getLanguageSetName(), lang_set);
+
+            ControlPanelControlleeUnit *unit = new ControlPanelControlleeUnit("device");
+            status = m_controllee->addControlPanelUnit(unit);
+            AJ_check(status, "cannot add controlpanel unit");
+
+            ControlPanel *root_cp = ControlPanel::createControlPanel(&lang_set);
+            if (!root_cp) throw std::runtime_error("cannot create controlpanel");
+            status = unit->addControlPanel(root_cp);
+            AJ_check(status, "cannot add root controlpanel");
+
+            Container *root = new Container("root", NULL);
+            status = root_cp->setRootWidget(root);
+            AJ_check(status, "cannot set root widget");
+            root->setEnabled(true);
+            root->setIsSecured(false);
+            root->setBgColor(0x200);
+            if (1)
+            {
+                std::vector<qcc::String> v;
+                v.push_back("Device management");
+                root->setLabels(v);
+            }
+            if (1)
+            {
+                std::vector<uint16_t> v;
+                v.push_back(VERTICAL_LINEAR);
+                v.push_back(HORIZONTAL_LINEAR);
+                root->setHints(v);
+            }
+
+            class AddressProperty: public Property
+            {
+            public:
+                AddressProperty(const qcc::String &name, Widget *root)
+                    : Property(name, root, STRING_PROPERTY)
+                {
+                    g_MAC_addr = "AA:BB:CC:DD:EE:FF";
+                    setGetValue(&AddressProperty::getAddr);
+                }
+
+                QStatus setValue(const char *value)
+                {
+                    g_MAC_addr = value;
+                    std::cerr << "SET value: " << g_MAC_addr.c_str() << " [" <<
+                              boost::this_thread::get_id() << "]\n";
+                    return ER_OK;
+                }
+
+            private:
+                static const char* getAddr()
+                {
+                    std::cerr << "GET value: " << g_MAC_addr.c_str() << " [" <<
+                                 boost::this_thread::get_id() << "]\n";
+                    return g_MAC_addr.c_str();
+                }
+            };
+
+            Property *MAC_prop = new AddressProperty("MAC_prop", root);
+            status = root->addChildWidget(MAC_prop);
+            AJ_check(status, "cannot add MAC property");
+            MAC_prop->setEnabled(true);
+            MAC_prop->setIsSecured(false);
+            MAC_prop->setWritable(true);
+            MAC_prop->setBgColor(0x500);
+            if (1)
+            {
+                std::vector<qcc::String> v;
+                v.push_back("MAC address:");
+                MAC_prop->setLabels(v);
+            }
+            if (1)
+            {
+                std::vector<uint16_t> v;
+                v.push_back(EDITTEXT);
+                MAC_prop->setHints(v);
+            }
+
+            Container *line = new Container("line", root);
+            status = root->addChildWidget(line);
+            AJ_check(status, "cannot add line");
+            line->setEnabled(true);
+            line->setIsSecured(false);
+            if (1)
+            {
+                std::vector<uint16_t> v;
+                //v.push_back(VERTICAL_LINEAR);
+                v.push_back(HORIZONTAL_LINEAR);
+                line->setHints(v);
+            }
+
+
+            class CreateAction: public Action
+            {
+            public:
+                CreateAction(const qcc::String &name, Widget* root)
+                    : Action(name, root)
+                {}
+
+                virtual ~CreateAction()
+                {}
+
+                bool executeCallBack()
+                {
+                    std::cerr << "CREATE DEVICE!!!" << " [" <<
+                                 boost::this_thread::get_id() << "]\n";
+                }
+            };
+
+            Action *NEW_action = new CreateAction("NEW_action", root);
+            status = line->addChildWidget(NEW_action);
+            AJ_check(status, "cannot add NEW action");
+            NEW_action->setEnabled(true);
+            NEW_action->setIsSecured(false);
+            NEW_action->setBgColor(0x400);
+            if (1)
+            {
+                std::vector<qcc::String> v;
+                v.push_back("Create");
+                NEW_action->setLabels(v);
+            }
+            if (1)
+            {
+                std::vector<uint16_t> v;
+                v.push_back(ACTIONBUTTON);
+                NEW_action->setHints(v);
+            }
+
+            class DeleteAction: public Action
+            {
+            public:
+                DeleteAction(const qcc::String &name, Widget* root)
+                    : Action(name, root)
+                {}
+
+                virtual ~DeleteAction()
+                {}
+
+                bool executeCallBack()
+                {
+                    std::cerr << "DELETE DEVICE!!!" << " [" <<
+                                 boost::this_thread::get_id() << "]\n";
+                }
+            };
+
+            Action *DEL_action = new DeleteAction("DEL_action", root);
+            status = line->addChildWidget(DEL_action);
+            AJ_check(status, "cannot add DEL action");
+            DEL_action->setEnabled(true);
+            DEL_action->setIsSecured(false);
+            DEL_action->setBgColor(0x400);
+            if (1)
+            {
+                std::vector<qcc::String> v;
+                v.push_back("Delete");
+                DEL_action->setLabels(v);
+            }
+            if (1)
+            {
+                std::vector<uint16_t> v;
+                v.push_back(ACTIONBUTTON);
+                DEL_action->setHints(v);
+            }
+        }
+
+        return m_controllee;
     }
 
 private:
@@ -1982,6 +2177,7 @@ private:
     bluepy::IPeripheralList *m_plist;
     basic_app::DelayedTaskList::SharedPtr m_delayed;
     bluetooth::DevicePtr m_bt_dev;
+    ajn::services::ControlPanelControllee *m_controllee;
     log::Logger m_log;
 };
 
@@ -3405,6 +3601,15 @@ private:
 
         status = m_AJ_bus->RegisterBusObject(*ajn::services::AboutServiceApi::getInstance());
         AJ_check(status, "failed to register about bus object");
+
+
+        if (1)
+        {
+            using namespace ajn::services;
+
+            ControlPanelService* service = ControlPanelService::getInstance();
+            service->initControllee(m_AJ_bus.get(), m_AJ_mngr->getControllee());
+        }
 
         std::vector<qcc::String> interfaces;
         interfaces.push_back(MANAGER_IFACE_NAME);
