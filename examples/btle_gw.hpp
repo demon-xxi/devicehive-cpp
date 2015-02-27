@@ -30,7 +30,210 @@
 #include <alljoyn/controlpanel/Property.h>
 #include <alljoyn/controlpanel/Action.h>
 
-qcc::String g_MAC_addr;
+// callback with context wrappers: http://www.p-nand-q.com/programming/cplusplus/using_member_functions_with_c_function_pointers.html
+namespace ctx_cb
+{
+
+typedef const char* (*LPFN_GetCharCallback0)();
+typedef const char* (*LPFN_GetCharCallback1)(void *context);
+
+
+class CallbackBase
+{
+public:
+
+    /**
+     * @param cb pointer to a unique C callback.
+     */
+    CallbackBase(LPFN_GetCharCallback0 cb)
+        : m_ctx(0)
+        , m_cb0(cb)
+        , m_cb1(0)
+    {}
+
+    // when free, allocate this callback
+    LPFN_GetCharCallback0 aquire(void* ctx, LPFN_GetCharCallback1 cb)
+    {
+        if (m_ctx)
+            return 0; // already used
+
+        m_ctx = ctx;
+        m_cb1 = cb;
+        return m_cb0;
+    }
+
+    // when done, remove allocation of the callback
+    void release()
+    {
+        m_ctx = 0;
+        m_cb1 = 0;
+    }
+
+protected:
+    static const char* invoke(int slot);
+
+private:
+    void *m_ctx;
+    LPFN_GetCharCallback0 m_cb0;
+    LPFN_GetCharCallback1 m_cb1;
+};
+
+
+template <int slot>
+class DynamicCallback:
+    public CallbackBase
+{
+public:
+    DynamicCallback()
+        : CallbackBase(&DynamicCallback<slot>::invoke)
+    {}
+
+private:
+    static const char* invoke()
+    {
+        return CallbackBase::invoke(slot);
+    }
+};
+
+
+class FunctionCallback
+{
+public:
+    FunctionCallback(void *context, LPFN_GetCharCallback1 cb)
+        : m_cb0(0)
+    {
+        CallbackBase **ss = get_slots();
+
+        for (m_alloc_index = 0; ss && *ss; ++ss, ++m_alloc_index)
+        {
+            m_cb0 = (*ss)->aquire(context, cb);
+            if (m_cb0)
+                break;
+        }
+
+        if (!m_cb0) throw std::runtime_error("no more free slots for callback");
+    }
+
+    ~FunctionCallback()
+    {
+        if (isValid())
+        {
+            get_slots()[m_alloc_index]->release();
+        }
+    }
+
+public:
+    operator LPFN_GetCharCallback0() const
+    {
+        return m_cb0;
+    }
+
+    bool isValid() const
+    {
+        return m_cb0 != 0;
+    }
+
+public:
+
+    /**
+     * @brief get array of available slots (NULL-terminated).
+     */
+    static CallbackBase** get_slots()
+    {
+        static CallbackBase* g_slots[] =
+        {
+            new DynamicCallback<0x00>(),
+            new DynamicCallback<0x01>(),
+            new DynamicCallback<0x02>(),
+            new DynamicCallback<0x03>(),
+            new DynamicCallback<0x04>(),
+            new DynamicCallback<0x05>(),
+            new DynamicCallback<0x06>(),
+            new DynamicCallback<0x07>(),
+            new DynamicCallback<0x08>(),
+            new DynamicCallback<0x09>(),
+            new DynamicCallback<0x0A>(),
+            new DynamicCallback<0x0B>(),
+            new DynamicCallback<0x0C>(),
+            new DynamicCallback<0x0D>(),
+            new DynamicCallback<0x0E>(),
+            new DynamicCallback<0x0F>(),
+            new DynamicCallback<0x10>(),
+            new DynamicCallback<0x11>(),
+            new DynamicCallback<0x12>(),
+            new DynamicCallback<0x13>(),
+            new DynamicCallback<0x14>(),
+            new DynamicCallback<0x15>(),
+            new DynamicCallback<0x16>(),
+            new DynamicCallback<0x17>(),
+            new DynamicCallback<0x18>(),
+            new DynamicCallback<0x19>(),
+            new DynamicCallback<0x1A>(),
+            new DynamicCallback<0x1B>(),
+            new DynamicCallback<0x1C>(),
+            new DynamicCallback<0x1D>(),
+            new DynamicCallback<0x1E>(),
+            new DynamicCallback<0x1F>(),
+            new DynamicCallback<0x20>(),
+            new DynamicCallback<0x21>(),
+            new DynamicCallback<0x22>(),
+            new DynamicCallback<0x23>(),
+            new DynamicCallback<0x24>(),
+            new DynamicCallback<0x25>(),
+            new DynamicCallback<0x26>(),
+            new DynamicCallback<0x27>(),
+            new DynamicCallback<0x28>(),
+            new DynamicCallback<0x29>(),
+            new DynamicCallback<0x2A>(),
+            new DynamicCallback<0x2B>(),
+            new DynamicCallback<0x2C>(),
+            new DynamicCallback<0x2D>(),
+            new DynamicCallback<0x2E>(),
+            new DynamicCallback<0x2F>(),
+            new DynamicCallback<0x30>(),
+            new DynamicCallback<0x31>(),
+            new DynamicCallback<0x32>(),
+            new DynamicCallback<0x33>(),
+            new DynamicCallback<0x34>(),
+            new DynamicCallback<0x35>(),
+            new DynamicCallback<0x36>(),
+            new DynamicCallback<0x37>(),
+            new DynamicCallback<0x38>(),
+            new DynamicCallback<0x39>(),
+            new DynamicCallback<0x3A>(),
+            new DynamicCallback<0x3B>(),
+            new DynamicCallback<0x3C>(),
+            new DynamicCallback<0x3D>(),
+            new DynamicCallback<0x3E>(),
+            new DynamicCallback<0x3F>(),
+            // TODO: more slots!!!
+            0 // NULL-terminated
+        };
+
+        return g_slots;
+    }
+
+private:
+    LPFN_GetCharCallback0 m_cb0;
+    int m_alloc_index;
+
+private: // NonCopyable
+    FunctionCallback(const FunctionCallback&);
+    FunctionCallback& operator=(const FunctionCallback&);
+};
+
+
+/**
+ * @brief Invoke slot's callback.
+ */
+const char* CallbackBase::invoke(int slot)
+{
+    CallbackBase *s = FunctionCallback::get_slots()[slot];
+    return s->m_cb1(s->m_ctx);
+}
+
+} // ctx_cb
+
 
 namespace bluetooth
 {
@@ -705,14 +908,13 @@ public:
             using namespace ajn::services;
 
             m_controllee = new ControlPanelControllee();
-
             QStatus status;
 
             LanguageSet lang_set("btle_gw_lang_set");
             lang_set.addLanguage("en");
             LanguageSets::add(lang_set.getLanguageSetName(), lang_set);
 
-            ControlPanelControlleeUnit *unit = new ControlPanelControlleeUnit("device");
+            ControlPanelControlleeUnit *unit = new ControlPanelControlleeUnit("manager");
             status = m_controllee->addControlPanelUnit(unit);
             AJ_check(status, "cannot add controlpanel unit");
 
@@ -747,28 +949,44 @@ public:
                 AddressProperty(const qcc::String &name, Widget *root)
                     : Property(name, root, STRING_PROPERTY)
                 {
-                    g_MAC_addr = "AA:BB:CC:DD:EE:FF";
-                    setGetValue(&AddressProperty::getAddr);
+                    m_MAC_addr = "B4:99:4C:64:B0:AC"; // "AA:BB:CC:DD:EE:FF";
+                    m_cb = new ctx_cb::FunctionCallback(this, &AddressProperty::getAddr);
+                    if (!m_cb->isValid()) throw std::runtime_error("no free callback slot");
+                    setGetValue(*m_cb);
+                }
+
+                ~AddressProperty()
+                {
+                    delete m_cb;
                 }
 
                 QStatus setValue(const char *value)
                 {
-                    g_MAC_addr = value;
-                    std::cerr << "SET value: " << g_MAC_addr.c_str() << " [" <<
-                              boost::this_thread::get_id() << "]\n";
+                    m_MAC_addr = value;
+                    std::cerr << "change MAC address to: "
+                              << m_MAC_addr.c_str() << "\n";
                     return ER_OK;
                 }
 
-            private:
-                static const char* getAddr()
+                const String& getAddrRef() const
                 {
-                    std::cerr << "GET value: " << g_MAC_addr.c_str() << " [" <<
-                                 boost::this_thread::get_id() << "]\n";
-                    return g_MAC_addr.c_str();
+                    return m_MAC_addr;
                 }
+
+            private:
+
+                static const char* getAddr(void *ctx)
+                {
+                    AddressProperty *pthis = reinterpret_cast<AddressProperty*>(ctx);
+                    return pthis->m_MAC_addr.c_str();
+                }
+
+            private:
+                ctx_cb::FunctionCallback *m_cb;
+                String m_MAC_addr;
             };
 
-            Property *MAC_prop = new AddressProperty("MAC_prop", root);
+            AddressProperty *MAC_prop = new AddressProperty("MAC_prop", root);
             status = root->addChildWidget(MAC_prop);
             AJ_check(status, "cannot add MAC property");
             MAC_prop->setEnabled(true);
@@ -805,8 +1023,13 @@ public:
             class CreateAction: public Action
             {
             public:
-                CreateAction(const qcc::String &name, Widget* root)
+                CreateAction(const qcc::String &name, Widget* root,
+                             const String &MAC_addr, ManagerObj *owner,
+                             boost::asio::io_service &ios)
                     : Action(name, root)
+                    , m_MAC_addr(MAC_addr)
+                    , m_owner(owner)
+                    , m_ios(ios)
                 {}
 
                 virtual ~CreateAction()
@@ -814,12 +1037,19 @@ public:
 
                 bool executeCallBack()
                 {
-                    std::cerr << "CREATE DEVICE!!!" << " [" <<
-                                 boost::this_thread::get_id() << "]\n";
+                    std::cerr << "creating device \"" << m_MAC_addr << "\"\n";
+                    m_ios.post(boost::bind(&ManagerObj::impl_createDevice, m_owner,
+                                m_MAC_addr, json::Value())); // no meta info
                 }
+
+            private:
+                const String &m_MAC_addr;
+                ManagerObj *m_owner;
+                boost::asio::io_service &m_ios;
             };
 
-            Action *NEW_action = new CreateAction("NEW_action", root);
+            Action *NEW_action = new CreateAction("NEW_action", root,
+                                MAC_prop->getAddrRef(), this, m_ios);
             status = line->addChildWidget(NEW_action);
             AJ_check(status, "cannot add NEW action");
             NEW_action->setEnabled(true);
@@ -841,8 +1071,13 @@ public:
             class DeleteAction: public Action
             {
             public:
-                DeleteAction(const qcc::String &name, Widget* root)
+                DeleteAction(const qcc::String &name, Widget* root,
+                             const String &MAC_addr, ManagerObj *owner,
+                             boost::asio::io_service &ios)
                     : Action(name, root)
+                    , m_MAC_addr(MAC_addr)
+                    , m_owner(owner)
+                    , m_ios(ios)
                 {}
 
                 virtual ~DeleteAction()
@@ -850,12 +1085,19 @@ public:
 
                 bool executeCallBack()
                 {
-                    std::cerr << "DELETE DEVICE!!!" << " [" <<
-                                 boost::this_thread::get_id() << "]\n";
+                    std::cerr << "deleting device \"" << m_MAC_addr << "\"\n";
+                    m_ios.post(boost::bind(&ManagerObj::impl_deleteDevice,
+                                m_owner, m_MAC_addr));
                 }
+
+            private:
+                const String &m_MAC_addr;
+                ManagerObj *m_owner;
+                boost::asio::io_service &m_ios;
             };
 
-            Action *DEL_action = new DeleteAction("DEL_action", root);
+            Action *DEL_action = new DeleteAction("DEL_action", root,
+                                MAC_prop->getAddrRef(), this, m_ios);
             status = line->addChildWidget(DEL_action);
             AJ_check(status, "cannot add DEL action");
             DEL_action->setEnabled(true);
@@ -887,6 +1129,7 @@ private:
         BTDevice(const String &MAC, const String &objPath, bluepy::PeripheralPtr helper, const json::Value &meta)
             : ajn::BusObject(objPath.c_str())
             , m_ios(helper->getIoService())
+            , m_controllee(0)
             , m_MAC(MAC)
             , m_meta(meta)
             , m_helper(helper)
@@ -922,9 +1165,10 @@ private:
                         shared_from_this(), _1, _2));
         }
 
-        void registerWhenInsected(ajn::BusAttachment &bus)
+        void registerWhenInsected(ajn::BusAttachment &bus, ajn::services::ControlPanelControllee *controllee)
         {
             m_AJ_bus = &bus;
+            m_controllee = controllee;
         }
 
     private:
@@ -1130,18 +1374,315 @@ private:
                 about->Announce();
             }
             if (m_AJ_bus)
+            {
                 m_AJ_bus->RegisterBusObject(*this);
+                createControlPanel();
+            }
+
             m_interfaces = interfaces;
         }
 
+public:
+
+
+        /**
+         * @brief Build ControlPanel controllee related to manager object.
+        */
+        void createControlPanel()
+        {
+            if (m_controllee)
+            {
+                using namespace ajn::services;
+
+                //m_controllee = new ControlPanelControllee();
+
+                QStatus status;
+
+                LanguageSet lang_set("btle_gw_lang_set");
+                lang_set.addLanguage("en");
+                LanguageSets::add(lang_set.getLanguageSetName(), lang_set);
+
+                ControlPanelControlleeUnit *unit = new ControlPanelControlleeUnit("device");
+                status = m_controllee->addControlPanelUnit(unit);
+                AJ_check(status, "cannot add controlpanel unit");
+
+                ControlPanel *root_cp = ControlPanel::createControlPanel(&lang_set);
+                if (!root_cp) throw std::runtime_error("cannot create controlpanel");
+                status = unit->addControlPanel(root_cp);
+                AJ_check(status, "cannot add root controlpanel");
+
+                Container *root = new Container("root", NULL);
+                status = root_cp->setRootWidget(root);
+                AJ_check(status, "cannot set root widget");
+                root->setEnabled(true);
+                root->setIsSecured(false);
+                root->setBgColor(0x200);
+                if (1)
+                {
+                    std::vector<qcc::String> v;
+                    v.push_back("Services");
+                    root->setLabels(v);
+                }
+                if (1)
+                {
+                    std::vector<uint16_t> v;
+                    v.push_back(VERTICAL_LINEAR);
+                    v.push_back(HORIZONTAL_LINEAR);
+                    root->setHints(v);
+                }
+
+                for (size_t i = 0; i < m_services.size(); ++i)
+                {
+                    bluepy::ServicePtr s = m_services[i];
+
+                    Container *s_root = new Container("service_root", root);
+                    status = root->addChildWidget(s_root);
+                    AJ_check(status, "cannot add service root");
+                    s_root->setEnabled(true);
+                    s_root->setIsSecured(false);
+                    s_root->setBgColor(0x300);
+                    if (1)
+                    {
+                        std::vector<qcc::String> v;
+                        v.push_back(ifaceNameFromUUID(s->getUUID()).c_str());
+                        root->setLabels(v);
+                    }
+                    if (1)
+                    {
+                        std::vector<uint16_t> v;
+                        v.push_back(VERTICAL_LINEAR);
+                        v.push_back(HORIZONTAL_LINEAR);
+                        root->setHints(v);
+                    }
+
+                    for (size_t i = 0; i < m_chars.size(); ++i)
+                    {
+                        bluepy::CharacteristicPtr c = m_chars[i];
+                        if (s->getStart() <= c->getHandle()
+                         && c->getHandle() <= s->getEnd())
+                        {
+                            String char_name = charNameFromUUID(c->getUUID(), c->userDesc);
+                            String char_type = charTypeFromHandle(c->getValueHandle());
+
+//                            if (iface)
+//                            {
+//                                uint8_t aj_prop = 0;
+//                                if (c->getProperties()&PROP_READ)
+//                                    aj_prop |= ajn::PROP_ACCESS_READ;
+//                                if (c->getProperties()&(PROP_WRITE|PROP_WRITE_woR))
+//                                    aj_prop |= ajn::PROP_ACCESS_WRITE;
+
+//                                iface->AddProperty(char_name.c_str(),
+//                                                   AJ_type(char_type).c_str(),
+//                                                   aj_prop);
+
+//                                //iface->AddPropertyAnnotation()
+//                                // TODO: add notification
+//                            }
+
+//                            m_prop_info[iface_name][char_name] = c;
+
+//                            json::Value jc;
+//                            jc["name"] = char_name;
+//                            if (c->clientConfig != 0)
+//                                jc["_config"] = c->clientConfig;
+//                            jc["access"] = accessFromProperties(c->getProperties());
+//                            jc["_value"] = c->getValueHandle();
+
+//                            js["properties"].append(jc);
+                        }
+                    }
+                }
+            }
+        }
+
+    private:
+
+        void controlleeForCharacteristic()
+        {
+//            class HexProperty: public Property
+//            {
+//            public:
+//                HexProperty(const qcc::String &name, Widget *root)
+//                    : Property(name, root, STRING_PROPERTY)
+//                {
+//                    m_value = "";
+//                    m_cb = new ctx_cb::FunctionCallback(this, &HexProperty::getVal);
+//                    if (!m_cb->isValid()) throw std::runtime_error("no free callback slot");
+//                    setGetValue(*m_cb);
+//                }
+
+//                ~HexProperty()
+//                {
+//                    delete m_cb;
+//                }
+
+//                QStatus setValue(const char *value)
+//                {
+//                    m_value = value;
+//                    std::cerr << "setting value to: "
+//                              << m_value.c_str() << "\n";
+//                    return ER_OK;
+//                }
+
+//                const String& getValRef() const
+//                {
+//                    return m_value;
+//                }
+
+//            private:
+
+//                static const char* getVal(void *ctx)
+//                {
+//                    HexProperty *pthis = static_cast<HexProperty*>(ctx);
+//                    return pthis->m_value.c_str();
+//                }
+
+//            private:
+//                ctx_cb::FunctionCallback *m_cb;
+//                String m_value;
+//            };
+
+//            HexProperty *hex_prop = new HexProperty("property", root);
+//            status = root->addChildWidget(hex_prop);
+//            AJ_check(status, "cannot add edit property");
+//            hex_prop->setEnabled(true);
+//            hex_prop->setIsSecured(false);
+//            hex_prop->setWritable(true);
+//            hex_prop->setBgColor(0x500);
+//            if (1)
+//            {
+//                std::vector<qcc::String> v;
+//                v.push_back("property:");
+//                hex_prop->setLabels(v);
+//            }
+//            if (1)
+//            {
+//                std::vector<uint16_t> v;
+//                v.push_back(EDITTEXT);
+//                hex_prop->setHints(v);
+//            }
+
+//            Container *line = new Container("line", root);
+//            status = root->addChildWidget(line);
+//            AJ_check(status, "cannot add line");
+//            line->setEnabled(true);
+//            line->setIsSecured(false);
+//            if (1)
+//            {
+//                std::vector<uint16_t> v;
+//                //v.push_back(VERTICAL_LINEAR);
+//                v.push_back(HORIZONTAL_LINEAR);
+//                line->setHints(v);
+//            }
+
+
+//            class ReadAction: public Action
+//            {
+//            public:
+//                ReadAction(const qcc::String &name, Widget* root,
+//                             const String &val, BTDevice *owner,
+//                             boost::asio::io_service &ios)
+//                    : Action(name, root)
+//                    , m_val(val)
+//                    , m_owner(owner)
+//                    , m_ios(ios)
+//                {}
+
+//                virtual ~ReadAction()
+//                {}
+
+//                bool executeCallBack()
+//                {
+//                    std::cerr << "read device \"" << m_val << "\"\n";
+////                        m_ios.post(boost::bind(&ManagerObj::impl_createDevice, m_owner,
+////                                    m_MAC_addr, json::Value())); // no meta info
+//                }
+
+//            private:
+//                const String &m_val;
+//                BTDevice *m_owner;
+//                boost::asio::io_service &m_ios;
+//            };
+
+//            Action *RD_action = new ReadAction("READ_action", root,
+//                                hex_prop->getValRef(), this, m_ios);
+//            status = line->addChildWidget(RD_action);
+//            AJ_check(status, "cannot add READ action");
+//            RD_action->setEnabled(true);
+//            RD_action->setIsSecured(false);
+//            RD_action->setBgColor(0x400);
+//            if (1)
+//            {
+//                std::vector<qcc::String> v;
+//                v.push_back("Read");
+//                RD_action->setLabels(v);
+//            }
+//            if (1)
+//            {
+//                std::vector<uint16_t> v;
+//                v.push_back(ACTIONBUTTON);
+//                RD_action->setHints(v);
+//            }
+
+//            class WriteAction: public Action
+//            {
+//            public:
+//                WriteAction(const qcc::String &name, Widget* root,
+//                             const String &val, BTDevice *owner,
+//                             boost::asio::io_service &ios)
+//                    : Action(name, root)
+//                    , m_val(val)
+//                    , m_owner(owner)
+//                    , m_ios(ios)
+//                {}
+
+//                virtual ~WriteAction()
+//                {}
+
+//                bool executeCallBack()
+//                {
+//                    std::cerr << "writing device \"" << m_val << "\"\n";
+////                        m_ios.post(boost::bind(&ManagerObj::impl_deleteDevice,
+////                                    m_owner, m_MAC_addr));
+//                }
+
+//            private:
+//                const String &m_val;
+//                BTDevice *m_owner;
+//                boost::asio::io_service &m_ios;
+//            };
+
+//            Action *WR_action = new WriteAction("WRITE_action", root,
+//                                hex_prop->getValRef(), this, m_ios);
+//            status = line->addChildWidget(WR_action);
+//            AJ_check(status, "cannot add WRITE action");
+//            WR_action->setEnabled(true);
+//            WR_action->setIsSecured(false);
+//            WR_action->setBgColor(0x400);
+//            if (1)
+//            {
+//                std::vector<qcc::String> v;
+//                v.push_back("Write");
+//                WR_action->setLabels(v);
+//            }
+//            if (1)
+//            {
+//                std::vector<uint16_t> v;
+//                v.push_back(ACTIONBUTTON);
+//                WR_action->setHints(v);
+//            }
+        }
 
     public:
         std::vector<qcc::String> getAllInterfaces() const
         {
             return m_interfaces;
         }
+
     private:
         std::vector<qcc::String> m_interfaces;
+        ajn::services::ControlPanelControllee *m_controllee;
 
         // [interface name][property name] => characteristic
         std::map<String, std::map<String, bluepy::CharacteristicPtr> > m_prop_info;
@@ -1762,9 +2303,18 @@ private:
      */
     void safe_createDevice(const String &MAC, const json::Value &meta, ajn::Message message)
     {
+        unsigned int n = impl_createDevice(MAC, meta);
+
+        ajn::MsgArg ret_args[1];
+        ret_args[0].Set("u", n); // OK
+        MethodReply(message, ret_args, 1);
+    }
+
+    int impl_createDevice(const String &MAC, const json::Value &meta)
+    {
         HIVELOG_DEBUG(m_log, "createDevice: MAC:\"" << MAC << "\" meta:\"" << toStr(meta) << "\"");
 
-        unsigned int n = 0;
+        int n = 0;
         BTDevicePtr &bt = m_bt_devices[MAC];
         if (!bt)
         {
@@ -1775,12 +2325,10 @@ private:
             n += 1;
 
             bt->inspect();
-            bt->registerWhenInsected(const_cast<ajn::BusAttachment&>(GetBusAttachment()));
+            bt->registerWhenInsected(const_cast<ajn::BusAttachment&>(GetBusAttachment()), m_controllee);
         }
 
-        ajn::MsgArg ret_args[1];
-        ret_args[0].Set("u", n); // OK
-        MethodReply(message, ret_args, 1);
+        return n;
     }
 
 
@@ -1812,9 +2360,17 @@ private:
      */
     void safe_deleteDevice(const String &MAC, ajn::Message message)
     {
+        unsigned int n = impl_deleteDevice(MAC);
+
+        ajn::MsgArg ret_args[1];
+        ret_args[0].Set("u", n); // OK
+        MethodReply(message, ret_args, 1);
+    }
+
+    int impl_deleteDevice(const String &MAC)
+    {
         HIVELOG_DEBUG(m_log, "deleteDevice: MAC:\"" << MAC << "\"");
-        // TODO: create device
-        unsigned int n = 0;
+        int n = 0;
 
         BTDevicePtr bt;
         std::map<String, BTDevicePtr>::iterator it = m_bt_devices.find(MAC);
@@ -1829,10 +2385,7 @@ private:
         }
 
         n += m_bt_devices.erase(MAC);
-
-        ajn::MsgArg ret_args[1];
-        ret_args[0].Set("u", n); // OK
-        MethodReply(message, ret_args, 1);
+        return n;
     }
 
 
