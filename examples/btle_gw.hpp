@@ -915,18 +915,18 @@ public:
     */
     ajn::services::ControlPanelControllee* getControllee()
     {
+        using namespace ajn::services;
+        LanguageSet lang_set("btle_gw_lang_set");
+        lang_set.addLanguage("en");
+
         if (!m_controllee)
         {
-            using namespace ajn::services;
-
             m_controllee = new ControlPanelControllee();
             QStatus status;
 
-            LanguageSet lang_set("btle_gw_lang_set");
-            lang_set.addLanguage("en");
             LanguageSets::add(lang_set.getLanguageSetName(), lang_set);
 
-            ControlPanelControlleeUnit *unit = new ControlPanelControlleeUnit("manager");
+            ControlPanelControlleeUnit *unit = new ControlPanelControlleeUnit("Device_Manager");
             status = m_controllee->addControlPanelUnit(unit);
             AJ_check(status, "cannot add controlpanel unit");
 
@@ -974,9 +974,19 @@ public:
 
                 QStatus setValue(const char *value)
                 {
-                    m_MAC_addr = value;
-                    std::cerr << "change MAC address to: "
-                              << m_MAC_addr.c_str() << "\n";
+                    std::cerr << "changing MAC address to: "
+                              << value << "\n";
+
+                    if (m_MAC_addr != value)
+                    {
+                        m_MAC_addr = value;
+                        std::cerr << "change MAC address to: "
+                                  << m_MAC_addr.c_str() << "\n";
+//                        QStatus s = Property::setValue(value);
+//                        if (s != ER_OK)
+//                            return s;
+                        return Property::SendValueChangedSignal();
+                    }
                     return ER_OK;
                 }
 
@@ -990,6 +1000,7 @@ public:
                 static const char* getAddr(void *ctx)
                 {
                     AddressProperty *pthis = reinterpret_cast<AddressProperty*>(ctx);
+                    std::cerr << "getting MAC address: " << pthis->m_MAC_addr << "\n";
                     return pthis->m_MAC_addr.c_str();
                 }
 
@@ -1050,8 +1061,9 @@ public:
                 bool executeCallBack()
                 {
                     std::cerr << "creating device \"" << m_MAC_addr << "\"\n";
-                    m_ios.post(boost::bind(&ManagerObj::impl_createDevice, m_owner,
-                                m_MAC_addr, json::Value())); // no meta info
+//                    m_ios.post(boost::bind(&ManagerObj::impl_createDevice, m_owner,
+//                                m_MAC_addr, json::Value())); // no meta info
+                    return true;
                 }
 
             private:
@@ -1098,8 +1110,9 @@ public:
                 bool executeCallBack()
                 {
                     std::cerr << "deleting device \"" << m_MAC_addr << "\"\n";
-                    m_ios.post(boost::bind(&ManagerObj::impl_deleteDevice,
-                                m_owner, m_MAC_addr));
+//                    m_ios.post(boost::bind(&ManagerObj::impl_deleteDevice,
+//                                m_owner, m_MAC_addr));
+                    return true;
                 }
 
             private:
@@ -1127,12 +1140,242 @@ public:
                 v.push_back(ACTIONBUTTON);
                 DEL_action->setHints(v);
             }
+
+
+
+            class TestAction: public Action
+            {
+            public:
+                TestAction(const qcc::String &name, Widget* root,
+                           AddressProperty *edit)
+                    : Action(name, root)
+                    , m_edit(edit)
+                {}
+
+                virtual ~TestAction()
+                {}
+
+                bool executeCallBack()
+                {
+                    std::cerr << "resetting MAC\n";
+                    String value = "00:00:00:00:00:00";
+                    m_edit->setValue(value.c_str());
+//                    m_ios.post(boost::bind(&ManagerObj::impl_createDevice, m_owner,
+//                                m_MAC_addr, json::Value())); // no meta info
+                    return true;
+                }
+
+            private:
+                AddressProperty *m_edit;
+            };
+
+            Action *TEST_action = new TestAction("TEST_action", root, MAC_prop);
+            status = line->addChildWidget(TEST_action);
+            AJ_check(status, "cannot add TEST action");
+            TEST_action->setEnabled(true);
+            TEST_action->setIsSecured(false);
+            TEST_action->setBgColor(0x400);
+            if (1)
+            {
+                std::vector<qcc::String> v;
+                v.push_back("Test");
+                TEST_action->setLabels(v);
+            }
+            if (1)
+            {
+                std::vector<uint16_t> v;
+                v.push_back(ACTIONBUTTON);
+                TEST_action->setHints(v);
+            }
         }
 
         return m_controllee;
     }
 
 private:
+
+    class HexProperty: public ajn::services::Property
+    {
+    public:
+        HexProperty(const qcc::String &name, ajn::services::Widget *root, UInt32 handle)
+            : ajn::services::Property(name, root, ajn::services::STRING_PROPERTY)
+            , m_handle(handle)
+        {
+            m_value = "";
+            m_cb = new ctx_cb::FunctionCallback(this, &HexProperty::getVal);
+            if (!m_cb->isValid()) throw std::runtime_error("no free callback slot");
+            setGetValue(*m_cb);
+        }
+
+        ~HexProperty()
+        {
+            delete m_cb;
+        }
+
+        QStatus setValue(const char *value)
+        {
+            if (m_value != value)
+            {
+                m_value = value;
+                std::cerr << "setting value to: "
+                          << m_value.c_str() << "\n";
+
+                return Property::SendValueChangedSignal();
+            }
+            return ER_OK;
+        }
+
+        const String& getValRef() const
+        {
+            return m_value;
+        }
+
+        void onChanged(UInt32 handle, const String &value)
+        {
+            if (handle == m_handle)
+            {
+                std::cerr << "got notification: " << value << "\n";
+                setValue(value.c_str());
+            }
+        }
+
+    private:
+
+        static const char* getVal(void *ctx)
+        {
+            HexProperty *pthis = static_cast<HexProperty*>(ctx);
+            return pthis->m_value.c_str();
+        }
+
+    private:
+        ctx_cb::FunctionCallback *m_cb;
+        String m_value;
+        UInt32 m_handle;
+    };
+
+
+    class ReadAction: public ajn::services::Action
+    {
+    public:
+        ReadAction(const qcc::String &name, ajn::services::Widget* root,
+                   HexProperty *edit,
+                   bluepy::PeripheralPtr helper,
+                   bluepy::CharacteristicPtr ch)
+            : ajn::services::Action(name, root)
+            , m_edit(edit)
+            , m_helper(helper)
+            , m_ch(ch)
+        {}
+
+        virtual ~ReadAction()
+        {}
+
+        bool executeCallBack()
+        {
+            std::cerr << "start reading \"" << m_ch->getValueHandle() << "\"\n";
+
+            m_helper->readChar(m_ch->getValueHandle(),
+                boost::bind(&ReadAction::onRead, this, _1, _2));
+
+            return true;
+        }
+
+        void onRead(const String &status, const String &value)
+        {
+            std::cerr << "READ: status:'" << status << "', value:" << value << "\n";
+            m_edit->setValue(value.c_str());
+        }
+
+    private:
+        HexProperty *m_edit;
+        bluepy::PeripheralPtr m_helper;
+        bluepy::CharacteristicPtr m_ch;
+    };
+
+
+    class WriteAction: public ajn::services::Action
+    {
+    public:
+        WriteAction(const qcc::String &name, ajn::services::Widget* root,
+                    const String &val, bluepy::PeripheralPtr helper,
+                    bluepy::CharacteristicPtr ch)
+            : ajn::services::Action(name, root)
+            , m_val(val)
+            , m_helper(helper)
+            , m_ch(ch)
+        {}
+
+        virtual ~WriteAction()
+        {}
+
+        bool executeCallBack()
+        {
+            if (m_val.empty())
+                return false;
+
+            std::cerr << "start writing \"" << m_val << "\" to \"" << m_ch->getValueHandle() << "\"\n";
+            m_helper->writeChar(m_ch->getValueHandle(), m_val, false, boost::bind(&WriteAction::onWrite, this, _1));
+
+            return true;
+        }
+
+        void onWrite(const String &status)
+        {
+            std::cerr << "WRITE: status:'" << status << "'\n";
+        }
+
+    private:
+        const String &m_val;
+        bluepy::PeripheralPtr m_helper;
+        bluepy::CharacteristicPtr m_ch;
+    };
+
+
+    class WatchAction: public ajn::services::Action
+    {
+    public:
+        WatchAction(const qcc::String &name, ajn::services::Widget* root,
+                    const String &val0, const String &val1,
+                    bluepy::PeripheralPtr helper,
+                    bluepy::CharacteristicPtr ch)
+            : ajn::services::Action(name, root)
+            , m_val0(val0)
+            , m_val1(val1)
+            , m_current(1)
+            , m_helper(helper)
+            , m_ch(ch)
+        {}
+
+        virtual ~WatchAction()
+        {}
+
+        bool executeCallBack()
+        {
+            const String &val = m_current ? m_val1 : m_val0;
+            if (val.empty())
+                return false;
+
+            std::cerr << "start writing \"" << val << "\" to \"" << m_ch->clientConfig << "\"\n";
+            m_helper->writeChar(m_ch->clientConfig, val, false, boost::bind(&WatchAction::onWrite, this, _1));
+            m_current = !m_current; // invert
+
+            return true;
+        }
+
+        void onWrite(const String &status)
+        {
+            std::cerr << "WATCH: status:'" << status << "'\n";
+        }
+
+    private:
+        const String m_val0;
+        const String m_val1;
+        int m_current;
+        bluepy::PeripheralPtr m_helper;
+        bluepy::CharacteristicPtr m_ch;
+    };
+
+
 
     class BTDevice: public ajn::BusObject,
             public boost::enable_shared_from_this<BTDevice>
@@ -1380,15 +1623,29 @@ private:
                 std::cerr << json::toStrH(js);
             }
 
-            if (ajn::services::AboutServiceApi* about = ajn::services::AboutServiceApi::getInstance())
-            {
-                about->AddObjectDescription(GetPath(), interfaces);
-                about->Announce();
-            }
             if (m_AJ_bus)
             {
                 m_AJ_bus->RegisterBusObject(*this);
                 createControlPanel();
+
+                if (m_controllee) // restart
+                {
+                    using namespace ajn::services;
+                    QStatus status;
+
+                    ControlPanelService* service = ControlPanelService::getInstance();
+//                    status = service->shutdownControllee();
+//                    std::cerr << "shutdown: " << status << "\n";
+
+                    status = service->initControllee(m_AJ_bus, m_controllee);
+                    std::cerr << "init again: " << status << "\n";
+                }
+            }
+
+            if (ajn::services::AboutServiceApi* about = ajn::services::AboutServiceApi::getInstance())
+            {
+                about->AddObjectDescription(GetPath(), interfaces);
+                about->Announce();
             }
 
             m_interfaces = interfaces;
@@ -1402,61 +1659,38 @@ public:
         */
         void createControlPanel()
         {
+            using namespace ajn::services;
+
             if (m_controllee)
             {
-                using namespace ajn::services;
-
-                //m_controllee = new ControlPanelControllee();
-
                 QStatus status;
+                std::cerr << "create CP for device: " << m_MAC << "\n";
 
-                LanguageSet lang_set("btle_gw_lang_set");
-                lang_set.addLanguage("en");
-                LanguageSets::add(lang_set.getLanguageSetName(), lang_set);
-
-                ControlPanelControlleeUnit *unit = new ControlPanelControlleeUnit("device");
+                ControlPanelControlleeUnit *unit = new ControlPanelControlleeUnit(("Device_" + simplify(m_MAC)).c_str());
                 status = m_controllee->addControlPanelUnit(unit);
                 AJ_check(status, "cannot add controlpanel unit");
-
-                ControlPanel *root_cp = ControlPanel::createControlPanel(&lang_set);
-                if (!root_cp) throw std::runtime_error("cannot create controlpanel");
-                status = unit->addControlPanel(root_cp);
-                AJ_check(status, "cannot add root controlpanel");
-
-                Container *root = new Container("root", NULL);
-                status = root_cp->setRootWidget(root);
-                AJ_check(status, "cannot set root widget");
-                root->setEnabled(true);
-                root->setIsSecured(false);
-                root->setBgColor(0x200);
-                if (1)
-                {
-                    std::vector<qcc::String> v;
-                    v.push_back("Services");
-                    root->setLabels(v);
-                }
-                if (1)
-                {
-                    std::vector<uint16_t> v;
-                    v.push_back(VERTICAL_LINEAR);
-                    v.push_back(HORIZONTAL_LINEAR);
-                    root->setHints(v);
-                }
 
                 for (size_t i = 0; i < m_services.size(); ++i)
                 {
                     bluepy::ServicePtr s = m_services[i];
 
-                    Container *s_root = new Container("service_root", root);
-                    status = root->addChildWidget(s_root);
-                    AJ_check(status, "cannot add service root");
-                    s_root->setEnabled(true);
-                    s_root->setIsSecured(false);
-                    s_root->setBgColor(0x300);
+                    ControlPanel *root_cp = ControlPanel::createControlPanel(LanguageSets::get("btle_gw_lang_set"));
+                    if (!root_cp) throw std::runtime_error("cannot create controlpanel");
+                    status = unit->addControlPanel(root_cp);
+                    AJ_check(status, "cannot add root controlpanel");
+
+                    String root_name = "root_" + simplify(ifaceNameFromUUID(s->getUUID()));
+                    std::cerr << "root name:" << root_name << "\n";
+                    Container *root = new Container(root_name.c_str(), NULL);
+                    status = root_cp->setRootWidget(root);
+                    AJ_check(status, "cannot set root widget");
+                    root->setEnabled(true);
+                    root->setIsSecured(false);
+                    root->setBgColor(0x200);
                     if (1)
                     {
                         std::vector<qcc::String> v;
-                        v.push_back(ifaceNameFromUUID(s->getUUID()).c_str());
+                        v.push_back("Characteristics");
                         root->setLabels(v);
                     }
                     if (1)
@@ -1473,8 +1707,9 @@ public:
                         if (s->getStart() <= c->getHandle()
                          && c->getHandle() <= s->getEnd())
                         {
-                            String char_name = charNameFromUUID(c->getUUID(), c->userDesc);
-                            String char_type = charTypeFromHandle(c->getValueHandle());
+                            //String char_type = charTypeFromHandle(c->getValueHandle());
+                            controlleeForCharacteristic(root, c);
+
 
 //                            if (iface)
 //                            {
@@ -1510,180 +1745,133 @@ public:
 
     private:
 
-        void controlleeForCharacteristic()
+        void controlleeForCharacteristic(ajn::services::Container *root, bluepy::CharacteristicPtr ch)
         {
-//            class HexProperty: public Property
-//            {
-//            public:
-//                HexProperty(const qcc::String &name, Widget *root)
-//                    : Property(name, root, STRING_PROPERTY)
+            using namespace ajn::services;
+
+            String name = charNameFromUUID(ch->getUUID(), ch->userDesc);
+            QStatus status;
+
+            Container *line = new Container(("line_" + simplify(name)).c_str(), root);
+            status = root->addChildWidget(line);
+            AJ_check(status, "cannot add line");
+            line->setEnabled(true);
+            line->setIsSecured(false);
+            if (1)
+            {
+                std::vector<uint16_t> v;
+                //v.push_back(VERTICAL_LINEAR);
+                v.push_back(HORIZONTAL_LINEAR);
+                line->setHints(v);
+            }
+
+            HexProperty *hex_prop = new HexProperty(("edit_" + simplify(name)).c_str(), line, ch->getValueHandle());
+            status = line->addChildWidget(hex_prop);
+            AJ_check(status, "cannot add edit property");
+            hex_prop->setEnabled(true);
+            hex_prop->setIsSecured(false);
+            if (ch->getProperties()&(PROP_WRITE|PROP_WRITE_woR))
+                hex_prop->setWritable(true);
+            hex_prop->setBgColor(0x500);
+            if (1)
+            {
+                std::vector<qcc::String> v;
+                v.push_back(name.c_str());
+                hex_prop->setLabels(v);
+            }
+            if (1)
+            {
+                std::vector<uint16_t> v;
+                v.push_back(EDITTEXT);
+                hex_prop->setHints(v);
+            }
+
+
+            Action *RD_action = new ReadAction(("read_" + simplify(name)).c_str(),
+                                               line, hex_prop, m_helper, ch);
+            status = line->addChildWidget(RD_action);
+            AJ_check(status, "cannot add READ action");
+            RD_action->setEnabled(true);
+            RD_action->setIsSecured(false);
+            RD_action->setBgColor(0x400);
+            if (1)
+            {
+                std::vector<qcc::String> v;
+                v.push_back("Read");
+                RD_action->setLabels(v);
+            }
+            if (1)
+            {
+                std::vector<uint16_t> v;
+                v.push_back(ACTIONBUTTON);
+                RD_action->setHints(v);
+            }
+
+            if (ch->getProperties()&(PROP_WRITE|PROP_WRITE_woR))
+            {
+                Action *WR_action = new WriteAction("WRITE_action", line,
+                                    hex_prop->getValRef(), m_helper, ch);
+                status = line->addChildWidget(WR_action);
+                AJ_check(status, "cannot add WRITE action");
+                WR_action->setEnabled(true);
+                WR_action->setIsSecured(false);
+                WR_action->setBgColor(0x400);
+                if (1)
+                {
+                    std::vector<qcc::String> v;
+                    v.push_back("Write");
+                    WR_action->setLabels(v);
+                }
+                if (1)
+                {
+                    std::vector<uint16_t> v;
+                    v.push_back(ACTIONBUTTON);
+                    WR_action->setHints(v);
+                }
+            }
+
+            if ((ch->getProperties()&PROP_NOTIFY) && ch->clientConfig)
+            {
+                m_helper->callOnNewNotification(boost::bind(&HexProperty::onChanged, hex_prop, _1, _2));
+
+                Action *watch_action = new WatchAction("WATCH_action", line, "0000", "0100", m_helper, ch);
+                status = line->addChildWidget(watch_action);
+                AJ_check(status, "cannot add WATCH action");
+                watch_action->setEnabled(true);
+                watch_action->setIsSecured(false);
+                watch_action->setBgColor(0x400);
+                if (1)
+                {
+                    std::vector<qcc::String> v;
+                    v.push_back("Watch");
+                    watch_action->setLabels(v);
+                }
+                if (1)
+                {
+                    std::vector<uint16_t> v;
+                    v.push_back(ACTIONBUTTON);
+                    watch_action->setHints(v);
+                }
+
+//                Action *unwatch_action = new WatchAction("WATCH_action", line, "0000", m_helper, ch);
+//                status = line->addChildWidget(unwatch_action);
+//                AJ_check(status, "cannot add UNWATCH action");
+//                unwatch_action->setEnabled(true);
+//                unwatch_action->setIsSecured(false);
+//                unwatch_action->setBgColor(0x400);
+//                if (1)
 //                {
-//                    m_value = "";
-//                    m_cb = new ctx_cb::FunctionCallback(this, &HexProperty::getVal);
-//                    if (!m_cb->isValid()) throw std::runtime_error("no free callback slot");
-//                    setGetValue(*m_cb);
+//                    std::vector<qcc::String> v;
+//                    v.push_back("Unwatch");
+//                    unwatch_action->setLabels(v);
 //                }
-
-//                ~HexProperty()
+//                if (1)
 //                {
-//                    delete m_cb;
+//                    std::vector<uint16_t> v;
+//                    v.push_back(ACTIONBUTTON);
+//                    unwatch_action->setHints(v);
 //                }
-
-//                QStatus setValue(const char *value)
-//                {
-//                    m_value = value;
-//                    std::cerr << "setting value to: "
-//                              << m_value.c_str() << "\n";
-//                    return ER_OK;
-//                }
-
-//                const String& getValRef() const
-//                {
-//                    return m_value;
-//                }
-
-//            private:
-
-//                static const char* getVal(void *ctx)
-//                {
-//                    HexProperty *pthis = static_cast<HexProperty*>(ctx);
-//                    return pthis->m_value.c_str();
-//                }
-
-//            private:
-//                ctx_cb::FunctionCallback *m_cb;
-//                String m_value;
-//            };
-
-//            HexProperty *hex_prop = new HexProperty("property", root);
-//            status = root->addChildWidget(hex_prop);
-//            AJ_check(status, "cannot add edit property");
-//            hex_prop->setEnabled(true);
-//            hex_prop->setIsSecured(false);
-//            hex_prop->setWritable(true);
-//            hex_prop->setBgColor(0x500);
-//            if (1)
-//            {
-//                std::vector<qcc::String> v;
-//                v.push_back("property:");
-//                hex_prop->setLabels(v);
-//            }
-//            if (1)
-//            {
-//                std::vector<uint16_t> v;
-//                v.push_back(EDITTEXT);
-//                hex_prop->setHints(v);
-//            }
-
-//            Container *line = new Container("line", root);
-//            status = root->addChildWidget(line);
-//            AJ_check(status, "cannot add line");
-//            line->setEnabled(true);
-//            line->setIsSecured(false);
-//            if (1)
-//            {
-//                std::vector<uint16_t> v;
-//                //v.push_back(VERTICAL_LINEAR);
-//                v.push_back(HORIZONTAL_LINEAR);
-//                line->setHints(v);
-//            }
-
-
-//            class ReadAction: public Action
-//            {
-//            public:
-//                ReadAction(const qcc::String &name, Widget* root,
-//                             const String &val, BTDevice *owner,
-//                             boost::asio::io_service &ios)
-//                    : Action(name, root)
-//                    , m_val(val)
-//                    , m_owner(owner)
-//                    , m_ios(ios)
-//                {}
-
-//                virtual ~ReadAction()
-//                {}
-
-//                bool executeCallBack()
-//                {
-//                    std::cerr << "read device \"" << m_val << "\"\n";
-////                        m_ios.post(boost::bind(&ManagerObj::impl_createDevice, m_owner,
-////                                    m_MAC_addr, json::Value())); // no meta info
-//                }
-
-//            private:
-//                const String &m_val;
-//                BTDevice *m_owner;
-//                boost::asio::io_service &m_ios;
-//            };
-
-//            Action *RD_action = new ReadAction("READ_action", root,
-//                                hex_prop->getValRef(), this, m_ios);
-//            status = line->addChildWidget(RD_action);
-//            AJ_check(status, "cannot add READ action");
-//            RD_action->setEnabled(true);
-//            RD_action->setIsSecured(false);
-//            RD_action->setBgColor(0x400);
-//            if (1)
-//            {
-//                std::vector<qcc::String> v;
-//                v.push_back("Read");
-//                RD_action->setLabels(v);
-//            }
-//            if (1)
-//            {
-//                std::vector<uint16_t> v;
-//                v.push_back(ACTIONBUTTON);
-//                RD_action->setHints(v);
-//            }
-
-//            class WriteAction: public Action
-//            {
-//            public:
-//                WriteAction(const qcc::String &name, Widget* root,
-//                             const String &val, BTDevice *owner,
-//                             boost::asio::io_service &ios)
-//                    : Action(name, root)
-//                    , m_val(val)
-//                    , m_owner(owner)
-//                    , m_ios(ios)
-//                {}
-
-//                virtual ~WriteAction()
-//                {}
-
-//                bool executeCallBack()
-//                {
-//                    std::cerr << "writing device \"" << m_val << "\"\n";
-////                        m_ios.post(boost::bind(&ManagerObj::impl_deleteDevice,
-////                                    m_owner, m_MAC_addr));
-//                }
-
-//            private:
-//                const String &m_val;
-//                BTDevice *m_owner;
-//                boost::asio::io_service &m_ios;
-//            };
-
-//            Action *WR_action = new WriteAction("WRITE_action", root,
-//                                hex_prop->getValRef(), this, m_ios);
-//            status = line->addChildWidget(WR_action);
-//            AJ_check(status, "cannot add WRITE action");
-//            WR_action->setEnabled(true);
-//            WR_action->setIsSecured(false);
-//            WR_action->setBgColor(0x400);
-//            if (1)
-//            {
-//                std::vector<qcc::String> v;
-//                v.push_back("Write");
-//                WR_action->setLabels(v);
-//            }
-//            if (1)
-//            {
-//                std::vector<uint16_t> v;
-//                v.push_back(ACTIONBUTTON);
-//                WR_action->setHints(v);
-//            }
+            }
         }
 
     public:
@@ -2322,6 +2510,7 @@ private:
         MethodReply(message, ret_args, 1);
     }
 
+public:
     int impl_createDevice(const String &MAC, const json::Value &meta)
     {
         HIVELOG_DEBUG(m_log, "createDevice: MAC:\"" << MAC << "\" meta:\"" << toStr(meta) << "\"");
@@ -2471,7 +2660,7 @@ private:
 
         if (m_bt_dev)
         {
-            m_bt_dev->scanStart(json::Value());
+            m_bt_dev->scanStart(json::Value(), bluetooth::Device::ScanCallback());
             m_bt_dev->asyncReadSome();
 
             // report result later
@@ -2816,7 +3005,7 @@ public:
         String deviceName = "btle_gw";
         String deviceKey = "7adbc600-9bca-11e4-bd06-0800200c9a66";
 
-        String baseUrl = "http://ecloud.dataart.com/ecapi8";
+        String baseUrl;// = "http://ecloud.dataart.com/ecapi8";
         size_t web_timeout = 0; // zero - don't change
         String http_version;
 
@@ -2844,7 +3033,8 @@ public:
                 std::cout << "\t--http-version <major.minor HTTP version>\n";
                 std::cout << "\t--no-ws disable automatic websocket service switching\n";
                 std::cout << "\t--no-ws-ping-pong disable websocket ping/pong messages\n";
-                std::cout << "\t--bluetooth <BTL device name or address>\n";
+                std::cout << "\t--bluetooth <BLE device name or address>\n";
+                std::cout << "\t--sensortag <SensorTag device address>\n";
 
                 exit(1);
             }
@@ -2874,6 +3064,8 @@ public:
                 pthis->m_disableWebsocketPingPong = true;
             else if (boost::algorithm::iequals(argv[i], "--bluetooth") && i+1 < argc)
                 bluetoothName = argv[++i];
+            else if (boost::algorithm::iequals(argv[i], "--sensortag") && i+1 < argc)
+                pthis->m_sensorTag = argv[++i];
         }
 
         if (pthis->m_helperPath.empty())
@@ -2886,7 +3078,7 @@ public:
                                                      pthis->m_network);
         pthis->m_device->status = "Online";
 
-        if (1) // create service
+        if (!baseUrl.empty()) // create service
         {
             http::Url url(baseUrl);
 
@@ -2947,7 +3139,8 @@ protected:
         HIVELOG_TRACE_BLOCK(m_log, "start()");
 
         Base::start();
-        m_service->asyncConnect();
+        if (m_service)
+            m_service->asyncConnect();
         m_delayed->callLater( // ASAP
             boost::bind(&This::tryToOpenBluetoothDevice,
                 shared_from_this()));
@@ -2964,7 +3157,8 @@ protected:
     {
         HIVELOG_TRACE_BLOCK(m_log, "stop()");
 
-        m_service->cancelAll();
+        if (m_service)
+            m_service->cancelAll();
         if (m_bluetooth)
             m_bluetooth->close();
 
@@ -3993,7 +4187,7 @@ private:
      */
     void onHelperNotification(UInt32 handle, const String &value, bluepy::PeripheralPtr helper)
     {
-        if (m_device && m_service)
+        if (m_device && m_service && m_deviceRegistered)
         {
             json::Value params;
             params["device"] = helper->getAddress();
@@ -4013,7 +4207,7 @@ private:
     {
         HIVE_UNUSED(status);
 
-        if (m_device && m_service)
+        if (m_device && m_service && m_deviceRegistered)
         {
             json::Value params;
             params["device"] = helper->getAddress();
@@ -4032,7 +4226,7 @@ private:
      */
     void onHelperError(const String &status, bluepy::PeripheralPtr helper)
     {
-        if (m_device && m_service)
+        if (m_device && m_service && m_deviceRegistered)
         {
             json::Value params;
             params["device"] = helper->getAddress();
@@ -4242,8 +4436,31 @@ private:
         {
             using namespace ajn::services;
 
-            ControlPanelService* service = ControlPanelService::getInstance();
-            service->initControllee(m_AJ_bus.get(), m_AJ_mngr->getControllee());
+            //ControlPanelService* service = ControlPanelService::getInstance();
+            ControlPanelControllee *controllee = m_AJ_mngr->getControllee();
+            //status = service->initControllee(m_AJ_bus.get(), controllee);
+            //AJ_check(status, "failed to init controllee");
+
+            //m_delayed->callLater(10000, boost::bind(&This::onAddCPPage, shared_from_this(), controllee));
+
+            String ST_meta_str = "{objectPrefix: 'SensorTag', objectPath: '/SensorTag', maximumAttribute: 136, "
+                    "interfaceNames: {"
+                        "'f000aa00-0451-4000-b000-000000000000': 'IR_TemperatureService',"
+                        "'f000aa10-0451-4000-b000-000000000000': 'AccelerometerService',"
+                        "'f000aa20-0451-4000-b000-000000000000': 'HumidityService',"
+                        "'f000aa30-0451-4000-b000-000000000000': 'MagnetometerService',"
+                        "'f000aa40-0451-4000-b000-000000000000': 'BarometerService',"
+                        "'f000aa50-0451-4000-b000-000000000000': 'GyroscopeService',"
+                        "'f000aa60-0451-4000-b000-000000000000': 'TestService',"
+                        "'f000ccc0-0451-4000-b000-000000000000': 'ConnectionControlService',"
+                        "'f000ffc0-0451-4000-b000-000000000000': 'OAD_Service'"
+                    "}}";
+
+            if (!m_sensorTag.empty())
+            {
+                m_delayed->callLater(5000, boost::bind(&alljoyn::ManagerObj::impl_createDevice,
+                                m_AJ_mngr, m_sensorTag, json::fromStr(ST_meta_str)));
+            }
         }
 
         std::vector<qcc::String> interfaces;
@@ -4264,6 +4481,67 @@ private:
         status = ajn::services::AboutServiceApi::getInstance()->Announce();
         AJ_check(status, "unable to announce");
     }
+
+
+//    void onAddCPPage(ajn::services::ControlPanelControllee *controllee)
+//    {
+//        using namespace ajn::services;
+//        QStatus status;
+
+//        if (controllee)
+//        {
+//            std::cerr << "adding new page\n";
+
+//            ControlPanelControlleeUnit *unit = new ControlPanelControlleeUnit("Device_Test_Page");
+//            status = controllee->addControlPanelUnit(unit);
+//            AJ_check(status, "cannot add controlpanel unit");
+
+//            ControlPanel *root_cp = ControlPanel::createControlPanel(LanguageSets::get("btle_gw_lang_set"));
+//            if (!root_cp) throw std::runtime_error("cannot create controlpanel");
+//            status = unit->addControlPanel(root_cp);
+//            AJ_check(status, "cannot add root controlpanel");
+
+//            Container *root = new Container("root2", NULL);
+//            status = root_cp->setRootWidget(root);
+//            AJ_check(status, "cannot set root widget");
+//            root->setEnabled(true);
+//            root->setIsSecured(false);
+//            root->setBgColor(0x200);
+//            if (1)
+//            {
+//                std::vector<qcc::String> v;
+//                v.push_back("Device management (test)");
+//                root->setLabels(v);
+//            }
+//            if (1)
+//            {
+//                std::vector<uint16_t> v;
+//                v.push_back(VERTICAL_LINEAR);
+//                v.push_back(HORIZONTAL_LINEAR);
+//                root->setHints(v);
+//            }
+
+//            status = unit->registerObjects(m_AJ_bus.get());
+//            AJ_check(status, "init failed2");
+//        }
+
+//        ControlPanelService* service = ControlPanelService::getInstance();
+//        status = service->shutdownControllee();
+//        AJ_check(status, "failed to shutdown controllee");
+
+//        m_delayed->callLater(5000, boost::bind(&This::onInitControllee, shared_from_this(), controllee));
+//    }
+
+//    void onInitControllee(ajn::services::ControlPanelControllee *controllee)
+//    {
+//        using namespace ajn::services;
+//        QStatus status;
+
+//        std::cerr << "init controllee again...";
+//        ControlPanelService* service = ControlPanelService::getInstance();
+//        status = service->initControllee(m_AJ_bus.get(), controllee);
+//        AJ_check(status, "failed to init controllee again");
+//    }
 
 
     void AJ_fillAbout(ajn::services::AboutPropertyStoreImpl *props)
@@ -4368,6 +4646,8 @@ private:
     devicehive::CommandPtr m_pendingScanCmd;
     basic_app::DelayedTask::SharedPtr m_pendingScanCmdTimeout;
     std::set<String> m_scanReportedDevices; // set of devices already reported
+
+    String m_sensorTag; // MAC to join sensor tag
 
 private:
     devicehive::IDeviceServicePtr m_service; ///< @brief The cloud service.

@@ -1093,9 +1093,18 @@ public:
     typedef boost::function1<void, String> DisconnectCallback;
     typedef boost::function1<void, String> ErrorCallback;
 
+    static void ntf_tie(UInt32 handle, const String &value, NotificationCallback a, NotificationCallback b)
+    {
+        if (a) a(handle, value);
+        if (b) b(handle, value);
+    }
+
     void callOnNewNotification(NotificationCallback cb)
     {
-        m_notification_cb = cb;
+        if (m_notification_cb)
+            m_notification_cb = boost::bind(&Peripheral::ntf_tie, _1, _2, m_notification_cb, cb);
+        else
+            m_notification_cb = cb;
     }
 
     void callOnUnintendedDisconnect(DisconnectCallback cb)
