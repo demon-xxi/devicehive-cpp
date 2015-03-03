@@ -823,6 +823,18 @@ private:
         status = iface->AddMethod("getDeviceList", "", "as", "result");
         AJ_check(status, "unable to register method");
 
+        iface->SetDescriptionLanguage("en");
+        iface->SetDescription("Interface to manage BLE devices");
+        iface->SetMemberDescription("createDevice", "Create new BLE device");
+        iface->SetArgDescription("createDevice", "MAC", "MAC address of BLE device to create");
+        iface->SetArgDescription("createDevice", "meta", "custom meta information in JSON format");
+        iface->SetArgDescription("createDevice", "result", "Return number of devices created: 0 or 1");
+        iface->SetMemberDescription("deleteDevice", "Delete existing BLE device");
+        iface->SetArgDescription("deleteDevice", "MAC", "MAC address of BLE device to delete");
+        iface->SetArgDescription("deleteDevice", "result", "Return number of devices deleted: 0 or 1");
+        iface->SetMemberDescription("getDeviceList", "Get existing BLE devices");
+        iface->SetArgDescription("getDeviceList", "result", "List of MAC addresses");
+
         return iface;
     }
 
@@ -1787,24 +1799,27 @@ public:
             }
 
 
-            Action *RD_action = new ReadAction(("read_" + simplify(name)).c_str(),
-                                               line, hex_prop, m_helper, ch);
-            status = line->addChildWidget(RD_action);
-            AJ_check(status, "cannot add READ action");
-            RD_action->setEnabled(true);
-            RD_action->setIsSecured(false);
-            RD_action->setBgColor(0x400);
-            if (1)
+            if (ch->getProperties()&PROP_READ)
             {
-                std::vector<qcc::String> v;
-                v.push_back("Read");
-                RD_action->setLabels(v);
-            }
-            if (1)
-            {
-                std::vector<uint16_t> v;
-                v.push_back(ACTIONBUTTON);
-                RD_action->setHints(v);
+                Action *RD_action = new ReadAction(("read_" + simplify(name)).c_str(),
+                                                   line, hex_prop, m_helper, ch);
+                status = line->addChildWidget(RD_action);
+                AJ_check(status, "cannot add READ action");
+                RD_action->setEnabled(true);
+                RD_action->setIsSecured(false);
+                RD_action->setBgColor(0x400);
+                if (1)
+                {
+                    std::vector<qcc::String> v;
+                    v.push_back("Read");
+                    RD_action->setLabels(v);
+                }
+                if (1)
+                {
+                    std::vector<uint16_t> v;
+                    v.push_back(ACTIONBUTTON);
+                    RD_action->setHints(v);
+                }
             }
 
             if (ch->getProperties()&(PROP_WRITE|PROP_WRITE_woR))
@@ -4416,6 +4431,8 @@ private:
 
             status = m_AJ_bus->RegisterBusObject(*m_AJ_mngr);
             AJ_check(status, "unable to register manager object");
+
+            m_AJ_mngr->SetDescription("en", "BLE to AllJoyn Manager object description");
         }
 
         ajn::services::AboutPropertyStoreImpl* props = new ajn::services::AboutPropertyStoreImpl();
@@ -4554,7 +4571,7 @@ private:
         props->setSupportedLangs(languages);
         props->setDefaultLang("en");
 
-        props->setAppName("Manager Obj", "en");
+        props->setAppName("BLE gateway app", "en");
         props->setModelNumber("N/A");
         props->setDateOfManufacture("1999-01-01");
         props->setSoftwareVersion("0.0.0 build 1");

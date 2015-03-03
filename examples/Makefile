@@ -36,10 +36,10 @@ endif
 #base_path:=$(shell dirname "${home_path}")
 home_path:=.
 include_dirs:=-I${home_path}/../include -I${home_path}/../externals/include \
-      -I${ALLJOYN_DIST}/inc
+      -I${ALLJOYN_DIST}/cpp/inc -I${ALLJOYN_DIST}/controlpanel/inc -I${ALLJOYN_DIST}/about/inc
 ex_libs:=${home_path}/../externals/lib.${platform}
 
-LIBS += -lalljoyn -lalljoyn_about -lstdc++ -lcrypto -lpthread -lrt -lssl -ldl
+LIBS += -lalljoyn -lalljoyn_about -lalljoyn_controlpanel -lstdc++ -lcrypto -lpthread -lrt -lssl -ldl
 defines+=-DQCC_OS_LINUX -DQCC_OS_GROUP_POSIX -DQCC_CPU_X86
 defines+=-DBOOST_SYSTEM_NO_DEPRECATED
 # disable SSL for tests
@@ -57,7 +57,7 @@ endif
 
 CXXFLAGS+=-Wall -Wno-unused-local-typedefs ${include_dirs} ${defines}
 CXXFLAGS+=-fdata-sections -ffunction-sections
-LDFLAGS+=-Wl,--gc-sections -pthread -L${ex_libs} -L$(ALLJOYN_DIST)/lib $(LIBS)
+LDFLAGS+=-Wl,--gc-sections -pthread -L${ex_libs} -L$(ALLJOYN_DIST)/cpp/lib -L$(ALLJOYN_DIST)/controlpanel/lib -L$(ALLJOYN_DIST)/about/lib $(LIBS)
 #LIBS+=-lboost_system
 
 
