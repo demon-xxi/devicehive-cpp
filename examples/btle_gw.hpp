@@ -1310,11 +1310,13 @@ private:
     public:
         WriteAction(const qcc::String &name, ajn::services::Widget* root,
                     const String &val, bluepy::PeripheralPtr helper,
-                    bluepy::CharacteristicPtr ch)
+                    bluepy::CharacteristicPtr ch, const json::Value &remap, bool auto_disconnect)
             : ajn::services::Action(name, root)
             , m_val(val)
             , m_helper(helper)
             , m_ch(ch)
+            , m_remap(remap)
+            , m_autoDisconnect(auto_disconnect)
         {}
 
         virtual ~WriteAction()
@@ -1325,8 +1327,14 @@ private:
             if (m_val.empty())
                 return false;
 
-            std::cerr << "start writing \"" << m_val << "\" to \"" << m_ch->getValueHandle() << "\"\n";
-            m_helper->writeChar(m_ch->getValueHandle(), m_val, false, boost::bind(&WriteAction::onWrite, this, _1));
+            String val = m_remap.get(m_val, json::Value::null()).asString();
+            if (val.empty())
+                val = m_val;
+            std::cerr << "start writing \"" << val << "\" to \"" << m_ch->getValueHandle() << "\"\n";
+            m_helper->writeChar(m_ch->getValueHandle(), val, false, boost::bind(&WriteAction::onWrite, this, _1));
+
+            if (m_autoDisconnect)
+                m_helper->disconnect();
 
             return true;
         }
@@ -1340,6 +1348,8 @@ private:
         const String &m_val;
         bluepy::PeripheralPtr m_helper;
         bluepy::CharacteristicPtr m_ch;
+        json::Value m_remap;
+        bool m_autoDisconnect;
     };
 
 
@@ -1825,7 +1835,9 @@ public:
             if (ch->getProperties()&(PROP_WRITE|PROP_WRITE_woR))
             {
                 Action *WR_action = new WriteAction("WRITE_action", line,
-                                    hex_prop->getValRef(), m_helper, ch);
+                                    hex_prop->getValRef(), m_helper, ch,
+                                    m_meta["remap"][boost::lexical_cast<String>(ch->getValueHandle())],
+                                    m_meta["autodisconnect"][boost::lexical_cast<String>(ch->getValueHandle())].asBool());
                 status = line->addChildWidget(WR_action);
                 AJ_check(status, "cannot add WRITE action");
                 WR_action->setEnabled(true);
@@ -2390,10 +2402,21 @@ public:
             {
                 String name = simplify(desc);
                 if (!name.empty())
+                {
+                    if (name == "Characteristic3") // BLE lamp hardcoding, TODO: remove this!!!
+                        name = "State";
                     return name;
+                }
             }
 
             return uuid.toStr();
+        }
+
+        String valueRemap(UInt32 handle, const String &val) const
+        {
+            json::Value remap = m_meta["remap"][boost::lexical_cast<String>(handle)];
+            String new_val = remap[val].asString();
+            return new_val.empty() ? val : new_val;
         }
 
         String charTypeFromHandle(UInt32 handle) const
@@ -3050,6 +3073,7 @@ public:
                 std::cout << "\t--no-ws-ping-pong disable websocket ping/pong messages\n";
                 std::cout << "\t--bluetooth <BLE device name or address>\n";
                 std::cout << "\t--sensortag <SensorTag device address>\n";
+                std::cout << "\t--lamp <BLE lamp device address>\n";
 
                 exit(1);
             }
@@ -3081,6 +3105,8 @@ public:
                 bluetoothName = argv[++i];
             else if (boost::algorithm::iequals(argv[i], "--sensortag") && i+1 < argc)
                 pthis->m_sensorTag = argv[++i];
+            else if (boost::algorithm::iequals(argv[i], "--lamp") && i+1 < argc)
+                pthis->m_BLE_lamp = argv[++i];
         }
 
         if (pthis->m_helperPath.empty())
@@ -4228,10 +4254,10 @@ private:
             params["device"] = helper->getAddress();
 
             m_service->asyncInsertNotification(m_device,
-                devicehive::Notification::create("xgatt/diconnected", params));
+                devicehive::Notification::create("xgatt/disconnected", params));
         }
 
-        HIVELOG_WARN(m_log, "BTLE device is diconnected, stopping...");
+        HIVELOG_WARN(m_log, "BTLE device is disconnected, stopping...");
         helper->stop();
     }
 
@@ -4473,10 +4499,24 @@ private:
                         "'f000ffc0-0451-4000-b000-000000000000': 'OAD_Service'"
                     "}}";
 
+            String LAMP_meta_str = "{objectPrefix: 'BLE_Lamp', objectPath: '/BLE_Lamp', maximumAttribute: 54, "
+                    "interfaceNames: {'0000fff0-0000-1000-8000-00805f9b34fb': 'LAMP_Service'},"
+                    "remap: {'43': {'on': '0f0d0300ffffffc800c800c8000059ffff', 'off': '0f0d0300ffffff0000c800c8000091ffff',"
+                                   " '1': '0f0d0300ffffffc800c800c8000059ffff',   '0': '0f0d0300ffffff0000c800c8000091ffff',"
+                                   "'01': '0f0d0300ffffffc800c800c8000059ffff',  '00': '0f0d0300ffffff0000c800c8000091ffff' }},"
+                    "autodisconnect: {'43': true}"
+                    "}";
+
             if (!m_sensorTag.empty())
             {
                 m_delayed->callLater(5000, boost::bind(&alljoyn::ManagerObj::impl_createDevice,
                                 m_AJ_mngr, m_sensorTag, json::fromStr(ST_meta_str)));
+            }
+
+            if (!m_BLE_lamp.empty())
+            {
+                m_delayed->callLater(5000, boost::bind(&alljoyn::ManagerObj::impl_createDevice,
+                                m_AJ_mngr, m_BLE_lamp, json::fromStr(LAMP_meta_str)));
             }
         }
 
@@ -4665,6 +4705,7 @@ private:
     std::set<String> m_scanReportedDevices; // set of devices already reported
 
     String m_sensorTag; // MAC to join sensor tag
+    String m_BLE_lamp;
 
 private:
     devicehive::IDeviceServicePtr m_service; ///< @brief The cloud service.
